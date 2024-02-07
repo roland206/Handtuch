@@ -1,19 +1,19 @@
 #ifndef CONTEXT_H
 #define CONTEXT_H
 
-#define FAN_1_PIN 16
-#define FAN_2_PIN 17
-#define WATER_PIN 18
-#define UVC_PIN   19
+#define FAN_1_PIN 19
+#define FAN_2_PIN 18
+#define WATER_PIN 17
+#define UVC_PIN   16
 #define SDA1_PIN  21
 #define SCL1_PIN  22
 #define SDA2_PIN  23
 #define SCL2_PIN  25
-#define FLUT_PIN  27
+#define FLUT_PIN  14
 #define PUMPE_PIN 26
 
 #define DHT_PIN2x  33
-#define DHT_PIN1   32
+#define DHT_PIN1   33
 
 #define CTRL_P_MODE_OFF       0x00         
 

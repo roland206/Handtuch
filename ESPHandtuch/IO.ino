@@ -81,7 +81,7 @@ int getFlut() {
 
 void setPumpe(int state) {
   setStatus(STATUS_PUMPE, state);
-  digitalWrite(PUMPE_PIN, state == 0);
+  digitalWrite(PUMPE_PIN, state != 0);
 }
 
 void setWater(int state) {
