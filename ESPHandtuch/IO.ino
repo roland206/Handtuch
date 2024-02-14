@@ -1,9 +1,5 @@
 #include "context.h"
 
-#define FAN_1_PIN 16
-#define FAN_2_PIN 17
-#define WATER_PIN 18
-#define UVC_PIN   19
 
 void initIO() {
   
@@ -23,8 +19,8 @@ void initIO() {
 }
 
 int checkRuhe(int von, int bis) {
-
-  int minToday = (sys.epoch / 60) % (24*60);
+// +60 for local time vs London time
+  int minToday = (int(sys.epoch/60) % (24*60)) + 60;
 
   if ((minToday < von) || (minToday >= bis)) return 0;
   return 1;

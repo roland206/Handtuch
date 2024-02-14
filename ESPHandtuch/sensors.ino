@@ -36,7 +36,7 @@ void calibrateSensors(int value) {
   } else {
     sys.scale1 = (float)(value / 2.0) / (float)(sys.readSensor1 - sys.zero1);
     sys.scale2 = (float)(value / 2.0) / (float)(sys.readSensor2 - sys.zero2);
-    sys.scale2 = (float)(value / 2.0) / (float)(sys.readSensor1 - sys.zero1);
+   // sys.scale2 = (float)(value / 2.0) / (float)(sys.readSensor1 - sys.zero1);
   }
   Serial.printf("Z1:%d:S1:%f:Z2:%d:S2:%f\n", sys.zero1, sys.scale1, sys.zero2, sys.scale2);
 }

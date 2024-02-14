@@ -47,7 +47,7 @@ typedef struct System {
   int   rampStopWeight, wasserMarsch;
   int   maxWeight, weightUp, weightDown, timeRamp;
   int   maxWaterCycles, tWater, tWaterWait, timePause;
-  int   control, state, timeOffset, epoch;
+  int   control, state, timeOffset, epoch, enDebug;
   int   ruheVon, ruheBis, ausVon, ausBis;
   uint64_t now;
 };

@@ -1,9 +1,7 @@
 from time import time
-
 from PyQt5.QtCore import QTimer, QTime
 from PyQt5.QtWidgets import QCheckBox, QFormLayout, QHBoxLayout, QFrame, QPushButton, QMenu, QGroupBox, QGridLayout, \
     QLabel, QRadioButton, QComboBox
-
 from Plot import *
 from Leds import *
 
@@ -11,7 +9,7 @@ class HandtuchViewer(QWidget):
     def __init__(self, esp, parent=None):
         QWidget.__init__(self, parent)
         self.TimerIDs = ['r', 's', 't', 'u']
-        self.updated = False
+        self.needsUpdate = False
         self.windowReady = False
         self.esp = esp
         self.t1 = time()
@@ -26,7 +24,7 @@ class HandtuchViewer(QWidget):
         self.redraw()
         self.windowReady = True
         esp.connectWidget(self)
-        self.timer=QTimer()
+        self.timer = QTimer()
         self.timer.timeout.connect(self.timerExpired)
         self.timer.start(2000)
 
@@ -40,8 +38,8 @@ class HandtuchViewer(QWidget):
         newPos = event.localPos().x()
         xMove = -(newPos - self.lastPos) / self.plot.plotWidth
         tMove = xMove * (self.t1 - self.t0)
-        if (self.t0 + tMove) < self.esp.tMin: tMove = self.esp.tMin - self.t0
-        if (self.t1 + tMove) > self.esp.tMax: tMove = self.esp.tMax - self.t1
+        if (self.t0 + tMove) < self.esp.tMin : tMove = self.esp.tMin - self.t0
+        if (self.t1 + tMove) > self.esp.tMax : tMove = self.esp.tMax - self.t1
         self.t0 = self.t0 + tMove
         self.t1 = min(self.t1 + tMove, time())
         self.lastPos = newPos
@@ -93,18 +91,25 @@ class HandtuchViewer(QWidget):
                 para.currentValue = para.min + para.step * float(slider.value())
                 para.label.setText(para.str())
 
+    def updateSlider(self, para):
+        m = int((para.max - para.min) / para.step)
+        para.slider.setRange(0, m)
+        value = round((para.currentValue - para.min) / para.step)
+        value = min(max(0, value), m)
+        para.slider.setValue(value)
     def paramWithID(self, ID):
         for para in self.esp.parameter:
             if para.cmd == ID: return para
+        print(f'No parameter {ID}')
         return None
     def updateTime(self):
         timeEdit = self.sender()
         tt = timeEdit.time()
-        secs = tt.msecsSinceStartOfDay() / 1000
+        secs = tt.msecsSinceStartOfDay() / 60000
 
         for i in range(4):
             if timeEdit == self.ruhe[i]:
-                para = self.paramWithID(self.TimerIDs [i])
+                para = self.paramWithID(self.TimerIDs[i])
                 para.currentValue = secs
         self.esp.saveParameter()
 
@@ -113,19 +118,19 @@ class HandtuchViewer(QWidget):
         layout = QFormLayout()
         frame.setLayout(layout)
 
-        self.dynamikBtn     = self.newButton(layout,"Dynamische Anzeige", True, self.displayChange)
-        self.followBtn     = self.newButton(layout,"Zeitbereich nachführen", True)
+        self.dynamikBtn     = self.newButton(layout, "Dynamische Anzeige", True, self.displayChange)
+        self.followBtn     = self.newButton(layout, "Zeitbereich nachführen", True)
 
         grid = QGroupBox("Geräte")
         gridLayout = QGridLayout()
         grid.setLayout(gridLayout)
 
         callBacks = [self.setFan1, self.setFan2, self.setUVC, self.setPumpe]
-        colours = [3,3,5,2]
+        colours = [3, 3, 6, 1]
         self.leds = []
         for i, label in enumerate(['Lüfter 1', 'Lüfter 2', 'UVC', 'Pumpe']):
             gridLayout.addWidget(QLabel(label), i, 0)
-            cb =QComboBox()
+            cb = QComboBox()
             gridLayout.addWidget(cb, i, 1)
             cb.addItems(['aus', 'an', 'Automatik', 'Party'])
             cb.currentIndexChanged.connect(callBacks[i])
@@ -138,11 +143,10 @@ class HandtuchViewer(QWidget):
         gridLayout = QGridLayout()
         grid.setLayout(gridLayout)
         callBacks = [self.setStop, self.setHochfahren, self.setBetrieb]
-        colours = [3,2,3]
+        colours = [3, 2, 3]
         for i, label in enumerate(['Stop', 'Hochfahren', 'Betrieb']):
             btn = QPushButton(label)
             gridLayout.addWidget(btn, i, 0)
-
             btn.clicked.connect(callBacks[i])
             if i > 0:
                 self.leds.append(Led(colorIndex=colours[i]))
@@ -161,27 +165,23 @@ class HandtuchViewer(QWidget):
                 para.slider = QSlider(Qt.Orientation.Horizontal)
                 para.slider.valueChanged.connect(self.setParameter)
                 para.slider.sliderReleased.connect(self.setParameterReleased)
-                m = int((para.max - para.min) / para.step)
-                para.slider.setRange(0, m)
-                value = round((para.currentValue - para.min) / para.step)
-                value = min(max(0, value), m)
-                para.slider.setValue(value)
+                self.updateSlider(para)
                 gridLayout.addWidget(para.slider)
 
         grid = QGroupBox("Ruhezeiten")
         gridLayout = QGridLayout()
         grid.setLayout(gridLayout)
 
-        gridLayout.addWidget(QLabel('Ruhe von..bis'), 0, 0)
-        gridLayout.addWidget(QLabel('kein UVC von..bis'), 1, 0)
+        gridLayout.addWidget(QLabel('Ruhe von...bis'), 0, 0)
+        gridLayout.addWidget(QLabel('kein UVC von...bis'), 1, 0)
         self.ruhe = []
-        for i,ID in enumerate(self.TimerIDs):
+        for i, ID in enumerate(self.TimerIDs):
             para = self.paramWithID(ID)
-            mSecs = QTime.fromMSecsSinceStartOfDay(int(1000 * para.currentValue))
+            mSecs = QTime.fromMSecsSinceStartOfDay(int(60000 * para.currentValue))
             self.ruhe.append(QTimeEdit(self))
             self.ruhe[-1].editingFinished.connect(self.updateTime)
             self.ruhe[-1].setTime(mSecs)
-            gridLayout.addWidget(self.ruhe[-1], i>>1, 1 + (i&1))
+            gridLayout.addWidget(self.ruhe[-1], i >> 1, 1 + (i & 1))
         layout.addRow(grid)
 
         btn = QPushButton('Nullmarke setzen')
@@ -189,6 +189,9 @@ class HandtuchViewer(QWidget):
         layout.addRow(btn)
         btn = QPushButton('10kg eichen')
         btn.clicked.connect(self.esp.set10)
+        layout.addRow(btn)
+        btn = QPushButton('ESP Reset')
+        btn.clicked.connect(self.esp.reset)
         layout.addRow(btn)
 
         frame.setMaximumWidth(500)
@@ -201,15 +204,21 @@ class HandtuchViewer(QWidget):
 
     def timerExpired(self):
         masks = [4, 8, 16, 2, 0x20, 0x40]
-        if not self.updated: return
+        if self.followBtn.isChecked() and self.t1 < int(time() - 10):
+            self.t1 = int(time() - 1)
+        elif not self.needsUpdate: return
         event = self.esp.events['S']
         status = event.lastValue
         for iLed,led in enumerate(self.leds):
             led.setLedState((status & masks[iLed]) > 0)
-        self.updated = False
+        newValue = self.esp.events['Z'].lastValue
+        para = self.paramWithID('g')
+        para.currentValue = newValue / para.scaling
+        self.updateSlider(para)
+        self.needsUpdate = False
         self.redraw()
-    def updateDisplay(self, status):
-        self.updated = True
+    def updateDisplay(self):
+        self.needsUpdate = True
 
     def redraw(self):
         if not self.windowReady: return
@@ -225,9 +234,9 @@ class HandtuchViewer(QWidget):
                 sp = plot.addSubPlot(2, "Status")
                 t = event.time[0:n]
                 data = event.data[0:n]
-                labels = ['Anfahren', 'Standby', 'Warten', 'Laden', 'Ventil', 'Flut', 'Pumpe', 'Fan 1', 'Fan 2', 'UVC']
+                labels = ['Anfahren', 'Betrieb', 'Warten', 'Laden', 'Ventil', 'Flut', 'Pumpe', 'Fan 1', 'Fan 2', 'UVC']
                 masks  = [32, 64, 256, 128, 1, 512, 2, 4, 8, 16]
-                colors = [1, 2, 8, 0, 0, 3, 3, 9, 9, 4]
+                colors = [1, 2, 8, 0, 3, 3, 6, 9, 9, 4]
                 sp.timeAxis = True
                 sp.plot(t, data, label=labels, bitmasks=masks, colorIndex=colors)
 
@@ -235,28 +244,28 @@ class HandtuchViewer(QWidget):
         if True:
             event = self.esp.events['T']
             n = event.nData
-            if n > 1:
+            if n > 0:
                 sp = plot.addSubPlot(2, f"Temperatur {event.lastValue/1000:4.1f}°")
                 sp.timeAxis = True
                 sp.plot(event.time[0:n], event.data[0:n].astype(float) / 1000.0, colorIndex = 3)
             event = self.esp.events['H']
             n = event.nData
-            if n > 1:
+            if n > 0:
                 sp = plot.addSubPlot(2, f"Luftfeuchte {event.lastValue/1000:4.1f}%")
                 sp.timeAxis = True
                 sp.plot(event.time[0:n], event.data[0:n].astype(float) / 1000.0, colorIndex = 3)
         if True:
             event = self.esp.events['G']
             n = event.nData
-
+            evSoll = self.esp.events['Z']
             if n > 1:
-                sp = plot.addSubPlot(2, f"Gewicht {event.lastValue/1000:5.2}kg")
+                sp = plot.addSubPlot(2, f"Gewicht {event.lastValue/1000:5.2}kg Soll = {evSoll.lastValue/1000:5.2}kg")
                 sp.timeAxis = True
                 sp.plot(event.time[0:n], event.data[0:n].astype(float) / 1000, colorIndex = 3)
                 event = self.esp.events['Z']
-                n = event.nData
-                if n > 0: sp.plot(event.time[0:n], event.data[0:n].astype(float) / 1000, colorIndex = 2)
-        if self.followBtn.isChecked(): self.t1 = self.esp.tMax
+                n = evSoll.nData
+                if n > 0: sp.plot(evSoll.time[0:n], evSoll.data[0:n].astype(float) / 1000, colorIndex = 2)
+        if self.followBtn.isChecked(): self.t1 = max(self.t1, self.esp.tMax)
         plot.setXlim([self.t0, self.t1+1])
         plot.repaint()
         self.esp.releaseAccess(1)

@@ -37,10 +37,11 @@ void interpreteCmd(char *msg) {
     case  '2': sys.scale1 = atof(msg); break;
     case  '3': sys.zero2  = atoi(msg); break;
     case  '4': sys.scale2 = atof(msg); break;
-    case  'r': sys.ruheVon = atoi(msg) - 60; break;
-    case  's': sys.ruheBis = atof(msg) - 60; break;
-    case  't': sys.ausVon  = atoi(msg) - 60; break;
-    case  'u': sys.ausBis  = atof(msg) - 60; break;
+    case  'r': sys.ruheVon = atoi(msg); break;
+    case  's': sys.ruheBis = atoi(msg); break;
+    case  't': sys.ausVon  = atoi(msg); break;
+    case  'u': sys.ausBis  = atoi(msg); break;
+    case  'e': sys.enDebug = atoi(msg); break;
     case  'F': generateEvent(1); break;
     }
     while((*msg != ':') && (*msg))
@@ -82,4 +83,10 @@ void generateEvent(int forced) {
     lastWeight = sys.weight;
     Serial.printf("W:%d:S:%d:T:%d:H:%d:G:%d:Z:%d\n",lastTime, lastState, lastTemp, lastHum, lastWeight, sys.wasserMarsch);
   
+}
+
+void sendDebugMSG(char *msg) {
+    if (sys.enDebug <= 0) return;
+    sys.enDebug--;
+    Serial.printf("e:%s\n",msg);
 }

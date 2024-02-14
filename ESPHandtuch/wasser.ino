@@ -6,7 +6,7 @@
 #define WATER_STATE_FILL    2
 #define WATER_STATE_WAIT    3
 int waterState = 0;
-uint64_t waterTimer;
+static uint64_t waterTimer;
 
 void initWasser() {
   setWater(0);
@@ -50,7 +50,7 @@ void checkWasser() {
               break;
               
       case WATER_STATE_STANDBY:
-              if (((sys.weight < sys.wasserMarsch)   && ~ramp) ||
+              if (((sys.weight < sys.wasserMarsch)   && !ramp) ||
                   ((sys.weight < sys.rampStopWeight) &&  ramp)) {
                     waterState = WATER_STATE_FILL;
                     nCyclesToDo = sys.maxWaterCycles;
@@ -61,9 +61,12 @@ void checkWasser() {
               
       case WATER_STATE_FILL:
               nCyclesToDo -= waterCycler(1);
-              if ((nCyclesToDo <= 0) && ~ramp) stopWater = 1;
-              if ((sys.weight > sys.rampStopWeight) &&  ramp) stopWater = 1;
-              if ((sys.now > waterTimer) && ramp) stopWater = 1;
+              if (ramp) {
+                if (sys.weight > sys.rampStopWeight) stopWater = 2;
+                if (sys.now > waterTimer) stopWater = 3;
+              } else {
+                if (nCyclesToDo <= 0)  stopWater = 1;
+              }
               if (stopWater) {
                 waterState = WATER_STATE_WAIT;
                 setStatus(STATUS_MODE_RAMP, 0);
@@ -74,7 +77,7 @@ void checkWasser() {
               waterCycler(0);
               if (sys.state & STATUS_FLUT) waterTimer = sys.now + sys.timePause;
               if (sys.now < waterTimer) break;
-              if (~flutHappened) sys.wasserMarsch  = min(sys.wasserMarsch + sys.weightUp, sys.maxWeight);
+              if (!flutHappened) sys.wasserMarsch  = min(sys.wasserMarsch + sys.weightUp, sys.maxWeight);
               waterState = WATER_STATE_STANDBY;
               break;
     }

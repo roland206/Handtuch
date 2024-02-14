@@ -33,6 +33,7 @@ void setup() {
   initWasser();
   initHost();
   sys.timeOffset = 1234;
+  sys.enDebug = 0;
   Serial.printf("ESP initialized");
 }
 
