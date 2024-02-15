@@ -24,7 +24,27 @@ def main(esp):
 
 if __name__ == '__main__':
 
-    esp = ESP('Handtuch.para')
-    main(esp)
-    esp.stop()
+    try:
+        esp = ESP('Handtuch.para')
+    except NoPort as inst:
+        app = QtWidgets.QApplication([])
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Critical)
+        detail = 'No USB Port found\nAvailable Ports :\n'
+        for p, desc, hwid in sorted(inst.ports):
+            detail += f'{p} : {desc}\n'
+        msg.setText(detail)
+        msg.setWindowTitle("Error")
+        msg.exec_()
+    except serial.serialutil.SerialException as inst:
+        app = QtWidgets.QApplication([])
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Critical)
+        msg.setText("USB Error")
+        msg.setInformativeText(str(inst))
+        msg.setWindowTitle("Error")
+        msg.exec_()
+    else:
+        main(esp)
+        esp.stop()
     sys.exit()

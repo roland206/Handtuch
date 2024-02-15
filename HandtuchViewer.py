@@ -194,6 +194,7 @@ class HandtuchViewer(QWidget):
         btn.clicked.connect(self.esp.reset)
         layout.addRow(btn)
 
+        self.newButton(layout, "ESP Protokoll ausgeben", True, self.setVerbose)
         frame.setMaximumWidth(500)
         return frame
     def displayChange(self, checked):
@@ -202,6 +203,8 @@ class HandtuchViewer(QWidget):
         else:
             self.timer.stop()
 
+    def setVerbose(self, checked):
+        self.esp.verbose = checked
     def timerExpired(self):
         masks = [4, 8, 16, 2, 0x20, 0x40]
         if self.followBtn.isChecked() and self.t1 < int(time() - 10):

@@ -4,6 +4,10 @@ from time import time, sleep
 from threading import *
 import numpy as np
 
+class NoPort(Exception):
+    def __init__(self, ports):
+        self.ports = ports
+        print('Expection created', ports)
 class Parameter():
     def __init__(self, name, cmd, min, max, scaling = 1, formating = '{0:.0f}', hidden = False, step = 1, type = int):
 
@@ -84,7 +88,7 @@ class ESP():
             ports = serial.tools.list_ports.comports()
             for p, desc, hwid in sorted(ports):
                 if 'CP210' in desc: port = p
-            if port is None: raise Exception("No CP210x Port available")
+            if port is None: raise NoPort(ports)
         self.port = serial.Serial(port, baud)
         self.parameter = []
         self.parameter.append(Parameter('Wasser marsch Gewicht', 'g', -1.0, 8.0, 1e3,'{0:5.3f} kg', step = 0.1))
