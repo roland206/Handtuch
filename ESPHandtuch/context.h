@@ -28,6 +28,7 @@
 #define CTRL_UVC_AUTO         0x80
 #define CTRL_MODE_RAMP        0x100
 #define CTRL_MODE_ON          0x200
+#define CTRL_HIGH_RES         0x400
 
 #define STATUS_WATER          0x01
 #define STATUS_PUMPE          0x02
@@ -45,7 +46,7 @@ typedef struct System {
   int   readSensor1, readSensor2, weight, weight1, weight2, zero1, zero2, temp1, humidity1, temp2, humidity2;
   float scale1, scale2;
   int   rampStopWeight, wasserMarsch;
-  int   maxWeight, weightUp, weightDown, timeRamp;
+  int   maxWeight, weightUp, weightDown, timeRamp, histerese;
   int   maxWaterCycles, tWater, tWaterWait, timePause;
   int   control, state, timeOffset, epoch, enDebug;
   int   ruheVon, ruheBis, ausVon, ausBis;

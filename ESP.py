@@ -29,24 +29,39 @@ class Parameter():
 
 class EventList():
     listofAll = []
-    def __init__(self,ID, name):
+    def __init__(self,ID, name, type = int, scale = 1.0):
         self.ID = ID
         self.name = name
-        self.space = 100
+        self.type = type
+        self.scale = scale
+        self.space = 100000
         self.time = np.zeros([self.space ]).astype(int)
-        self.data = np.zeros([self.space ]).astype(int)
+        self.data = np.zeros([self.space ]).astype(type)
         self.nData = 0
         self.lastValue = 0
         EventList.listofAll.append(self)
+
+    def extractData(self, t0, t1):
+        last = self.nData- 1
+        if (last < 0) or (t1 < self.time[0]) or (t0 >= self.time[last]): return None, None
+        i0, i1 = 0, last
+        if t0 < self.time[0]: i0 = np.argmax(self.time >= t0)
+        if t1 < self.time[last]: i1 = np.argmax(self.time >= t1)
+
+        if i0 > 0: i0 -= 1
+        i1 = min(i1+2, last) + 1
+        return self.time[i0:i1], self.data[i0:i1]
     def addEvent(self, when, data):
 
-        if self.nData >= self.space:
-            print(f'extend storage for {self.name}')
+        if (self.nData + 3) >= self.space:
+            print(f'adapt storage for {self.name}')
             self.reduceSpace()
-            #np.append(self.time, self.time[0:1000])
-            #np.append(self.data, self.data[0:1000])
+
         if self.nData > 0:
             if data == self.data[self.nData - 1]: return
+
+        if self.type is float : data = self.scale * float(data)
+        if data == self.data[self.nData-1]: return
         self.time[self.nData] = when
         self.data[self.nData] = data
         self.nData += 1
@@ -55,26 +70,22 @@ class EventList():
     def reduceSpace(self):
         minTime = 0
         for ev in EventList.listofAll:
-            minTime = max(minTime, ev.time2Half())
+            index = int(ev.nData - ev.space / 2)
+            if index > 0: minTime = max(minTime, ev.time[index])
+
         for ev in EventList.listofAll:
-            ev.reduce2Time(minTime)
+            kill = 0
+            for i in range(ev.nData):
+                if ev.time[i] < minTime: kill = i
+            if kill <= 0:
+                print(f'No cut for {ev.name}')
+            else:
+                print(f'{ev.name} reduction kill point {kill} data in buffer {ev.nData}')
+                ev.time[0:ev.nData - kill] = ev.time[kill:ev.nData]
+                ev.data[0:ev.nData - kill] = ev.data[kill:ev.nData]
+                ev.nData -= kill
+        self.tMin = minTime
 
-    def time2Half(self):
-        index = int(self.nData - self.space / 2)
-        if index <= 0: return 0
-        return self.time[index]
-
-    def reduce2Time(self, lowest):
-        kill = 0
-        for i in range(self.nData):
-            if self.time[i] < lowest: kill = i
-        if kill <= 0:
-            print(f'No cut for {self.name}')
-            return
-        print(f'{self.name} reduction kill point {kill} data in buffer {self.nData}')
-        self.time[0:self.nData-kill] = self.time[kill:self.nData]
-        self.data[0:self.nData-kill] = self.data[kill:self.nData]
-        self.nData -= kill
 
 class ESP():
     def __init__(self, parameterFile, port = None, baud = 115200):
@@ -100,7 +111,7 @@ class ESP():
         self.parameter.append(Parameter('Schritt runter', 'D', 0.0, 1.0, 1e3,'{0:5.3f} kg', step=0.01))
         self.parameter.append(Parameter('Wasserzeit', 'V', 1, 60, 1,'{0:5.0f} sec'))
         self.parameter.append(Parameter('Pausenzeit', 'W', 1, 60, 60.0,'{0:5.0f} min'))
-        self.parameter.append(Parameter('Rampenzeit', 'K', 1, 10, 60.0,'{0:5.0f} min'))
+        self.parameter.append(Parameter('Rampenzeit', 'K', 1, 30, 60.0,'{0:5.0f} min'))
         self.parameter.append(Parameter('Anzahl Wasser Zyklen', 'Z', 1, 25))
         self.parameter.append(Parameter('Zeit zwischen Zyklen', 'v', 1, 30, 1,'{0:5.0f} sec'))
         self.parameter.append(Parameter('M', 'M', 0, 0, hidden = True))
@@ -109,17 +120,17 @@ class ESP():
         self.parameter.append(Parameter('s', 's', 0, 0, hidden = True))
         self.parameter.append(Parameter('t', 't', 0, 0, hidden = True))
         self.parameter.append(Parameter('u', 'u', 0, 0, hidden = True))
-        self.parameter.append(Parameter('Z1', 'Z1', 0, 0, hidden = True, type = float))
-        self.parameter.append(Parameter('Z2', 'Z2', 0, 0, hidden = True, type = float))
-        self.parameter.append(Parameter('S1', 'S1', 0, 0, hidden = True, type = float))
-        self.parameter.append(Parameter('S2', 'S2', 0, 0, hidden = True, type = float))
+        self.parameter.append(Parameter('a', 'a', 0, 0, hidden = True))
+        self.parameter.append(Parameter('c', 'c', 0, 0, hidden = True))
+        self.parameter.append(Parameter('b', 'b', 0, 0, hidden = True, type = float))
+        self.parameter.append(Parameter('d', 'd', 0, 0, hidden = True, type = float))
         self.loadParameter(self.parameterFile)
         self.events = {}
         self.events['S'] = EventList('S', 'Status')
-        self.events['T'] = EventList('T', 'Temperatur')
-        self.events['H'] = EventList('H', 'Luftfeuchte')
-        self.events['G'] = EventList('G', 'Gewicht')
-        self.events['Z'] = EventList('Z', 'Wasser Marsch')
+        self.events['T'] = EventList('T', 'Temperatur', type = float, scale = 1e-3)
+        self.events['H'] = EventList('H', 'Luftfeuchte', type = float, scale = 1e-3)
+        self.events['G'] = EventList('G', 'Gewicht', type = float, scale = 1e-3)
+        self.events['Z'] = EventList('Z', 'Wasser Marsch', type = float, scale = 1e-3)
 
         self.readerRun = True
         self.reader = Thread(target = self.readerProcess)
@@ -134,11 +145,15 @@ class ESP():
 
     def saveParameter(self, toESP=True, toFile=True):
         if toESP:
+            msg = ''
             for para in self.parameter:
+                if msg != '' : msg += ':'
                 if para.type == float:
-                    self.sendCMD(f'{para.cmd}:{para.currentValue * para.scaling}')
+                    msg += f'{para.cmd}:{para.currentValue * para.scaling}'
                 else:
-                    self.sendCMD(f'{para.cmd}:{round(para.currentValue * para.scaling)}')
+                    msg += f'{para.cmd}:{round(para.currentValue * para.scaling)}'
+            self.sendCMD(msg)
+            self.sendCMD('F:')
         if toFile:
             with open(self.parameterFile, "w") as file:
                 for para in self.parameter:
@@ -167,21 +182,26 @@ class ESP():
         except OSError:
             print("File not found <" + file + ">")
     def getDevice(self, dev):
+        if dev == 4: return self.control & 0x400
         return (self.control >> (dev * 2)) & 3
     def setDevice(self, dev, value):
-        shift = dev * 2
-        self.control = (self.control & ~(3 << shift))| (value << shift)
+        if dev == 4:
+            if value:
+                self.control |= 0x400
+            else:
+                self.control &= ~0x400
+        else:
+            shift = dev * 2
+            self.control = (self.control & ~(3 << shift))| (value << shift)
         self.modePara.currentValue = float(self.control)
         self.saveParameter()
-        self.sendCMD('F:')
-    #    self.sendCMD('e:1')
+
     def setNull(self):
         if self.verbose: print('Setze Nullmarke')
         self.sendCMD('C:0')
 
-
     def set10(self):
-        self.sendCMD('C:10000')
+        self.sendCMD('C:12000')
         if self.verbose: print('Kalibriere 10kGg')
     def setState(self, state):
         self.sendCMD(f'X:{state}')
@@ -194,7 +214,7 @@ class ESP():
     def analyze(self, cmd):
         input = cmd.split(':')
         self.gainAccess(0)
-        if input[0] =='Z1':
+        if input[0] =='a':
             for iCmd in range(0, len(input), 2):
                 cmd = input[iCmd]
                 for para in self.parameter:

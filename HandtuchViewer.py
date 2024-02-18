@@ -4,10 +4,13 @@ from PyQt5.QtWidgets import QCheckBox, QFormLayout, QHBoxLayout, QFrame, QPushBu
     QLabel, QRadioButton, QComboBox
 from Plot import *
 from Leds import *
+from Reporter import *
 
 class HandtuchViewer(QWidget):
     def __init__(self, esp, parent=None):
         QWidget.__init__(self, parent)
+        self.reporter = Reporter()
+        self.lastStatus = 0
         self.TimerIDs = ['r', 's', 't', 'u']
         self.needsUpdate = False
         self.windowReady = False
@@ -27,6 +30,7 @@ class HandtuchViewer(QWidget):
         self.timer = QTimer()
         self.timer.timeout.connect(self.timerExpired)
         self.timer.start(2000)
+        self.reporter.talk('Handtuch maschine gestarted', 10)
 
 
     def mousePressEvent(self, event) -> None:
@@ -79,9 +83,11 @@ class HandtuchViewer(QWidget):
     def setHochfahren(self):
         self.esp.setState(1)
     def setBetrieb(self):
+        self.reporter.talk('Handtuch maschine startet betrieb', 10)
         self.esp.setState(2)
 
     def setParameterReleased(self):
+        self.setParameter()
         self.esp.saveParameter()
 
     def setParameter(self):
@@ -143,7 +149,7 @@ class HandtuchViewer(QWidget):
         gridLayout = QGridLayout()
         grid.setLayout(gridLayout)
         callBacks = [self.setStop, self.setHochfahren, self.setBetrieb]
-        colours = [3, 2, 3]
+        colours = [3, 3, 2]
         for i, label in enumerate(['Stop', 'Hochfahren', 'Betrieb']):
             btn = QPushButton(label)
             gridLayout.addWidget(btn, i, 0)
@@ -187,7 +193,7 @@ class HandtuchViewer(QWidget):
         btn = QPushButton('Nullmarke setzen')
         btn.clicked.connect(self.esp.setNull)
         layout.addRow(btn)
-        btn = QPushButton('10kg eichen')
+        btn = QPushButton('12kg eichen')
         btn.clicked.connect(self.esp.set10)
         layout.addRow(btn)
         btn = QPushButton('ESP Reset')
@@ -195,6 +201,8 @@ class HandtuchViewer(QWidget):
         layout.addRow(btn)
 
         self.newButton(layout, "ESP Protokoll ausgeben", True, self.setVerbose)
+        self.newButton(layout, "Hohe Auflösung", self.esp.getDevice(4), self.setResolution)
+        self.newButton(layout, "Sprachnachrichten", True, self.setSprache)
         frame.setMaximumWidth(500)
         return frame
     def displayChange(self, checked):
@@ -203,8 +211,18 @@ class HandtuchViewer(QWidget):
         else:
             self.timer.stop()
 
+    def setResolution(self, checked):
+        self.esp.setDevice(4, checked)
     def setVerbose(self, checked):
         self.esp.verbose = checked
+    def setSprache(self, checked):
+        if checked:
+            self.reporter.setVerbosity(5)
+            self.reporter.talk('Sprachnachrichten aktiv', 20)
+        else:
+            self.reporter.talk('Werde nun den sappel halten', 20)
+            self.reporter.setVerbosity(15)
+
     def timerExpired(self):
         masks = [4, 8, 16, 2, 0x20, 0x40]
         if self.followBtn.isChecked() and self.t1 < int(time() - 10):
@@ -212,16 +230,23 @@ class HandtuchViewer(QWidget):
         elif not self.needsUpdate: return
         event = self.esp.events['S']
         status = event.lastValue
+        if not (status & 0x20) and (self.lastStatus & 0x20) : self.reporter.talk('Hochfahren beendet', 10)
+        if not (status & 0x40) and (self.lastStatus & 0x40) : self.reporter.talk('Betrieb eingestellt', 10)
+        if not (status & 0x80) and (self.lastStatus & 0x80) : self.reporter.talk('Bewässerung beendet', 10)
+        if     (status & 0x80) and not (self.lastStatus & 0x80) : self.reporter.talk('handtücher werden bewässert', 10)
+        if     (status & 0x200) and not (self.lastStatus & 0x200) : self.reporter.talk('ups wasserüberlauf', 10)
+        self.lastStatus = status
         for iLed,led in enumerate(self.leds):
             led.setLedState((status & masks[iLed]) > 0)
         newValue = self.esp.events['Z'].lastValue
         para = self.paramWithID('g')
-        para.currentValue = newValue / para.scaling
+        para.currentValue = newValue
         self.updateSlider(para)
         self.needsUpdate = False
         self.redraw()
     def updateDisplay(self):
         self.needsUpdate = True
+        self.t0 = max(self.t0, self.esp.tMin)
 
     def redraw(self):
         if not self.windowReady: return
@@ -229,6 +254,7 @@ class HandtuchViewer(QWidget):
         plot = self.plot
         plot.clr()
         plot.share = True
+        if self.followBtn.isChecked(): self.t1 = max(self.t1, self.esp.tMax)
 
         if True:
             event = self.esp.events['S']
@@ -237,7 +263,7 @@ class HandtuchViewer(QWidget):
                 sp = plot.addSubPlot(2, "Status")
                 t = event.time[0:n]
                 data = event.data[0:n]
-                labels = ['Anfahren', 'Betrieb', 'Warten', 'Laden', 'Ventil', 'Flut', 'Pumpe', 'Fan 1', 'Fan 2', 'UVC']
+                labels = ['Anfahren', 'Betrieb', 'Pause', 'Laden', 'Ventil', 'Flut', 'Pumpe', 'Fan 1', 'Fan 2', 'UVC']
                 masks  = [32, 64, 256, 128, 1, 512, 2, 4, 8, 16]
                 colors = [1, 2, 8, 0, 3, 3, 6, 9, 9, 4]
                 sp.timeAxis = True
@@ -246,29 +272,36 @@ class HandtuchViewer(QWidget):
 
         if True:
             event = self.esp.events['T']
-            n = event.nData
-            if n > 0:
-                sp = plot.addSubPlot(2, f"Temperatur {event.lastValue/1000:4.1f}°")
+            t, data = event.extractData(self.t0, self.t1)
+            if t is not None:
+                sp = plot.addSubPlot(2, f"Temperatur {event.lastValue:4.1f}°")
                 sp.timeAxis = True
-                sp.plot(event.time[0:n], event.data[0:n].astype(float) / 1000.0, colorIndex = 3)
+                sp.ylim = [np.min(data)-1.5, np.max(data)+1.5]
+                sp.plot(t, data, colorIndex = 3)
+
             event = self.esp.events['H']
-            n = event.nData
-            if n > 0:
-                sp = plot.addSubPlot(2, f"Luftfeuchte {event.lastValue/1000:4.1f}%")
+            t, data = event.extractData(self.t0, self.t1)
+            if t is not None:
+                sp = plot.addSubPlot(2, f"Luftfeuchte {event.lastValue:4.1f}%")
                 sp.timeAxis = True
-                sp.plot(event.time[0:n], event.data[0:n].astype(float) / 1000.0, colorIndex = 3)
+                sp.ylim = [np.min(data)-1.5, np.max(data)+1.5]
+                sp.plot(t, data, colorIndex = 3)
         if True:
             event = self.esp.events['G']
-            n = event.nData
-            evSoll = self.esp.events['Z']
-            if n > 1:
-                sp = plot.addSubPlot(2, f"Gewicht {event.lastValue/1000:5.2}kg Soll = {evSoll.lastValue/1000:5.2}kg")
+            t, data = event.extractData(self.t0, self.t1)
+            if t is not None:
+                evSoll = self.esp.events['Z']
+                tSoll, dataSoll = evSoll.extractData(self.t0, self.t1)
+                sp = plot.addSubPlot(2, f"Gewicht {event.lastValue:.2f}kg Soll = {evSoll.lastValue:.2f}kg")
                 sp.timeAxis = True
-                sp.plot(event.time[0:n], event.data[0:n].astype(float) / 1000, colorIndex = 3)
-                event = self.esp.events['Z']
-                n = evSoll.nData
-                if n > 0: sp.plot(evSoll.time[0:n], evSoll.data[0:n].astype(float) / 1000, colorIndex = 2)
-        if self.followBtn.isChecked(): self.t1 = max(self.t1, self.esp.tMax)
+                sp.plot(t, data, colorIndex = 3)
+                if tSoll is not None:
+                    sp.setBlockMode()
+                    tSoll= np.concatenate((tSoll, np.array([self.t1])))
+                    dataSoll = np.concatenate((dataSoll, np.array([dataSoll[-1]])))
+                    sp.plot(tSoll, dataSoll, colorIndex = 2)
+
+
         plot.setXlim([self.t0, self.t1+1])
         plot.repaint()
         self.esp.releaseAccess(1)

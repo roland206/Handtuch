@@ -69,6 +69,7 @@ class SubPlot():
         self.xTicks = []
         self.yTicks = []
         self.color = []
+        self.blockMode = []
         self.xlim = None
         self.ylim = None
         self.xGridFlag = True
@@ -79,10 +80,10 @@ class SubPlot():
         self.bitmasks = None
         self.timeAxis = False
         self.symbol = None
-        self.blockMode = False
+        self.actBlockMode = False
 
-    def blockMode(self, mode = True):
-        self.blockMode = mode
+    def setBlockMode(self, mode = True):
+        self.actBlockMode = mode
     def title(self, title):
         self.titleStr = title
 
@@ -115,6 +116,7 @@ class SubPlot():
         self.xdata.append(x)
         self.ydata.append(y)
         self.labels.append(label)
+        self.blockMode.append(self.actBlockMode)
 
         self.bitmasks = bitmasks
 
@@ -452,7 +454,7 @@ class SubPlot():
             elif self.symbol != None:
                 for i in range(len(xdata)):
                     p.drawText(round(xdata[i]), round(ydata[i] + cch2), self.symbol)
-            elif self.blockMode:
+            elif self.blockMode[idata]:
                 for i in range(len(xdata) - 1):
                     p.drawLine(int(xdata[i]), int(ydata[i]), int(xdata[i+1]), int(ydata[i]))
                     p.drawLine(int(xdata[i+1]), int(ydata[i]), int(xdata[i + 1]), int(ydata[i + 1]))

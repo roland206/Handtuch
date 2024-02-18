@@ -14,8 +14,8 @@ static uint64_t timer = 0;
 
 void initPumpe() {
   
-    sys.pumpeMaxOn = 4000;
-    sys.pumpeMinPause = 2000;
+    sys.pumpeMaxOn = 15000;
+    sys.pumpeMinPause = 5000;
     timer = 0;
     state = STATE_STANDBY;
 }
@@ -38,11 +38,10 @@ void checkPumpe() {
                                 } else break;
                                 timer = sys.now + sys.pumpeMaxOn;
                                 setPumpe(1);
-         case STATE_ON:         if ((sys.now > timer) || ((pMode == CTRL_P_MODE_AUTO) && !flut)) {
-                                    setPumpe(0);;
-                                    timer = sys.now + sys.pumpeMinPause;
-                                    state = STATE_STANDBY;    
-                                } 
+         case STATE_ON:         if (sys.now < timer) break;
+                                setPumpe(0);
+                                timer = sys.now + sys.pumpeMinPause;
+                                state = STATE_STANDBY;
                                 break;
         }
     }

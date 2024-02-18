@@ -33,10 +33,10 @@ void interpreteCmd(char *msg) {
     case  'W': sys.timePause = atoi(msg) * 1000; break;
     case  'C': calibrateSensors(atoi(msg)); break;
     case  'X': cmdWater(atoi(msg)); break;
-    case  '1': sys.zero1  = atoi(msg); break;
-    case  '2': sys.scale1 = atof(msg); break;
-    case  '3': sys.zero2  = atoi(msg); break;
-    case  '4': sys.scale2 = atof(msg); break;
+    case  'a': sys.zero1  = atoi(msg); break;
+    case  'b': sys.scale1 = atof(msg); break;
+    case  'c': sys.zero2  = atoi(msg); break;
+    case  'd': sys.scale2 = atof(msg); break;
     case  'r': sys.ruheVon = atoi(msg); break;
     case  's': sys.ruheBis = atoi(msg); break;
     case  't': sys.ausVon  = atoi(msg); break;
@@ -68,12 +68,17 @@ void checkHost() {
 void generateEvent(int forced) {
 
     static int lastState, lastTime, lastTemp, lastHum, lastWeight;
+    int minT = 5, minTH = 500, minW = 100;
+
+    if (sys.control & CTRL_HIGH_RES) {
+        minT = 1; minTH = 100; minW = 10;
+    }
 
     if (lastState!= sys.state) forced = 1;
-    if ((sys.epoch - lastTime) > 2) {
-        if (abs(lastTemp   - sys.temp1)     > 1000) forced = 1;
-        if (abs(lastHum    - sys.humidity1) > 2000) forced = 1;
-        if (abs(lastWeight - sys.weight)   >  100)  forced = 1;
+    if ((sys.epoch - lastTime) > minT) {
+        if (abs(lastTemp   - sys.temp1)     > minTH) forced = 1;
+        if (abs(lastHum    - sys.humidity1) > minTH) forced = 1;
+        if (abs(lastWeight - sys.weight)    >  minW) forced = 1;
     }
     if (forced == 0) return;
     lastState  = sys.state;

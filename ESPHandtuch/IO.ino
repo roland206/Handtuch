@@ -22,8 +22,13 @@ int checkRuhe(int von, int bis) {
 // +60 for local time vs London time
   int minToday = (int(sys.epoch/60) % (24*60)) + 60;
 
-  if ((minToday < von) || (minToday >= bis)) return 0;
-  return 1;
+  if (von <= bis)
+    return ((minToday >= von) && (minToday < bis));
+  else
+    return ((minToday >= von) || (minToday < bis));
+
+  //if ((minToday < von) || (minToday >= bis)) return 0;
+  //return 1;
 }
 
 void setRelais() {

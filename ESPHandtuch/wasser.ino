@@ -11,6 +11,7 @@ static uint64_t waterTimer;
 void initWasser() {
   setWater(0);
   waterState = WATER_STATE_OFF;
+  sys.histerese = 500;
 }
 
 void flutWasser() {
@@ -39,7 +40,7 @@ void checkWasser() {
     static int nCyclesToDo;
     static int flutHappened = 0;
     int ramp = sys.state & STATUS_MODE_RAMP;
-    int stopWater = sys.weight > sys.wasserMarsch;
+    int stopWater = (sys.weight - sys.histerese) > sys.wasserMarsch;
 
     flutHappened |= sys.state & STATUS_FLUT;
     
