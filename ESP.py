@@ -78,7 +78,7 @@ class EventList():
             for i in range(ev.nData):
                 if ev.time[i] < minTime: kill = i
             if kill <= 0:
-                print(f'No cut for {ev.name}')
+                print(f'No cut for {ev.name} ndata {ev.nData}')
             else:
                 print(f'{ev.name} reduction kill point {kill} data in buffer {ev.nData}')
                 ev.time[0:ev.nData - kill] = ev.time[kill:ev.nData]
@@ -88,7 +88,9 @@ class EventList():
 
 
 class ESP():
-    def __init__(self, parameterFile, port = None, baud = 115200):
+    def __init__(self, parameterFile, reporter, port = None, baud = 115200):
+        self.reporter = reporter
+        self.log = False
         self.verbose = True
         self.parameterFile = parameterFile
         self.semaphore = Semaphore(1)
@@ -136,13 +138,14 @@ class ESP():
         self.reader = Thread(target = self.readerProcess)
         self.reader.start()
         self.sendCMD(f'T:{int(time())}') # set the ESP time
-        self.sendCMD('F:')
         self.control = int(self.modePara.currentValue)
         self.deviceNames = ['Pumpe', 'Fan 1', 'Fan 2', 'UVC']
         self.deviceStates = ['aus', 'an', 'auto', 'party']
     def connectWidget(self, widget):
         self.widget = widget
-
+    def logging(self, flag):
+        self.log = flag
+        if flag: self.sendCMD('F:')
     def saveParameter(self, toESP=True, toFile=True):
         if toESP:
             msg = ''
@@ -228,6 +231,9 @@ class ESP():
             for i in range(2, len(input), 2):
                 ev = self.events[input[i]]
                 ev.addEvent(when, int(input[i+1]))
+        else:
+            print(f'Kommentar {cmd}')
+        if self.log: self.reporter.logEvent(cmd)
         self.releaseAccess(0)
         if self.widget is not None: self.widget.updateDisplay()
     def sendCMD(self, msg):

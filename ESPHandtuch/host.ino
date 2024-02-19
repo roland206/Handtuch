@@ -85,6 +85,9 @@ void generateEvent(int forced) {
     lastTime   = sys.epoch;
     lastTemp   = sys.temp1;
     lastHum    = sys.humidity1;
+     if (abs(lastWeight - sys.weight)    >  1000) {
+        Serial.printf("sens1 %d, sens2 %d, w1 %d, w2 %d zeor1 %d, sc1 %f, z2 %d sc2 %f\n", sys.readSensor1, sys.readSensor1, sys.weight1, sys.weight2, sys.zero1, sys.scale1, sys.zero2, sys.scale2);
+     }
     lastWeight = sys.weight;
     Serial.printf("W:%d:S:%d:T:%d:H:%d:G:%d:Z:%d\n",lastTime, lastState, lastTemp, lastHum, lastWeight, sys.wasserMarsch);
   

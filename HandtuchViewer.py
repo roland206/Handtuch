@@ -7,9 +7,9 @@ from Leds import *
 from Reporter import *
 
 class HandtuchViewer(QWidget):
-    def __init__(self, esp, parent=None):
+    def __init__(self, esp, reporter, parent=None,):
         QWidget.__init__(self, parent)
-        self.reporter = Reporter()
+        self.reporter = reporter
         self.lastStatus = 0
         self.TimerIDs = ['r', 's', 't', 'u']
         self.needsUpdate = False
@@ -203,7 +203,9 @@ class HandtuchViewer(QWidget):
         self.newButton(layout, "ESP Protokoll ausgeben", True, self.setVerbose)
         self.newButton(layout, "Hohe Auflösung", self.esp.getDevice(4), self.setResolution)
         self.newButton(layout, "Sprachnachrichten", True, self.setSprache)
+        self.newButton(layout, "Log-Datei erzeugen", True, self.setLog)
         frame.setMaximumWidth(500)
+        self.setLog(True)
         return frame
     def displayChange(self, checked):
         if checked:
@@ -215,6 +217,9 @@ class HandtuchViewer(QWidget):
         self.esp.setDevice(4, checked)
     def setVerbose(self, checked):
         self.esp.verbose = checked
+
+    def setLog(self, checked):
+        self.esp.logging(checked)
     def setSprache(self, checked):
         if checked:
             self.reporter.setVerbosity(5)

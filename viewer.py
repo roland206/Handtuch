@@ -9,23 +9,24 @@ from HandtuchViewer import *
 
 
 class MainWindow(QTabWidget):
-    def __init__(self, esp):
+    def __init__(self, esp, reporter):
         super(MainWindow, self).__init__()
-        self.addTab(HandtuchViewer(esp)   , "Verlauf")
+        self.addTab(HandtuchViewer(esp, reporter)   , "Verlauf")
         self.resize(2400, 1800)
  #       self.addTab(HandtuchParameter(esp), "Parameter")
 
-def main(esp):
+def main(esp, reporter):
     app = QApplication(sys.argv)
-    main = MainWindow(esp)
+    main = MainWindow(esp, reporter)
     main.show()
     app.exec_()
     esp.connectWidget(None)
 
 if __name__ == '__main__':
 
+    reporter = Reporter('/media/ramdisk/')
     try:
-        esp = ESP('Handtuch.para')
+        esp = ESP('Handtuch.para', reporter)
     except NoPort as inst:
         app = QtWidgets.QApplication([])
         msg = QMessageBox()
@@ -45,6 +46,6 @@ if __name__ == '__main__':
         msg.setWindowTitle("Error")
         msg.exec_()
     else:
-        main(esp)
+        main(esp, reporter)
         esp.stop()
     sys.exit()
