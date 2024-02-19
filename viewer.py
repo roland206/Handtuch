@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import QApplication, QWidget, QDialog, QCheckBox, QFormLayo
 #import pyqtgraph as pg
 import sys
 import numpy as np
+import platform
 from ESP import *
 from HandtuchViewer import *
 
@@ -23,8 +24,10 @@ def main(esp, reporter):
     esp.connectWidget(None)
 
 if __name__ == '__main__':
-
-    reporter = Reporter('/media/ramdisk/')
+    if 'indows' in platform.platform():
+        reporter = Reporter(Linux = False)
+    else:
+        reporter = Reporter('/media/ramdisk/', Linux = True)
     try:
         esp = ESP('Handtuch.para', reporter)
     except NoPort as inst:

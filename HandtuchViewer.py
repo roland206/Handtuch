@@ -73,41 +73,8 @@ class HandtuchViewer(QWidget):
         layout.addRow(cb)
         return cb
 
-    def setFan1(self, i): self.esp.setDevice(1, i)
-    def setFan2(self, i): self.esp.setDevice(2, i)
-    def setUVC(self, i): self.esp.setDevice(3, i)
-    def setPumpe(self, i): self.esp.setDevice(0, i)
 
-    def setStop(self):
-        self.esp.setState(0)
-    def setHochfahren(self):
-        self.esp.setState(1)
-    def setBetrieb(self):
-        self.reporter.talk('Handtuch maschine startet betrieb', 10)
-        self.esp.setState(2)
 
-    def setParameterReleased(self):
-        self.setParameter()
-        self.esp.saveParameter()
-
-    def setParameter(self):
-        slider = self.sender()
-        for para in self.esp.parameter:
-            if para.slider == slider:
-                para.currentValue = para.min + para.step * float(slider.value())
-                para.label.setText(para.str())
-
-    def updateSlider(self, para):
-        m = int((para.max - para.min) / para.step)
-        para.slider.setRange(0, m)
-        value = round((para.currentValue - para.min) / para.step)
-        value = min(max(0, value), m)
-        para.slider.setValue(value)
-    def paramWithID(self, ID):
-        for para in self.esp.parameter:
-            if para.cmd == ID: return para
-        print(f'No parameter {ID}')
-        return None
     def updateTime(self):
         timeEdit = self.sender()
         tt = timeEdit.time()
@@ -124,7 +91,7 @@ class HandtuchViewer(QWidget):
         layout = QFormLayout()
         frame.setLayout(layout)
 
-        self.dynamikBtn     = self.newButton(layout, "Dynamische Anzeige", True, self.displayChange)
+        self.dynamikBtn     = self.newButton(layout, "Dynamische Anzeige", True, self.dynamicDisplay)
         self.followBtn     = self.newButton(layout, "Zeitbereich nachführen", True)
 
         grid = QGroupBox("Geräte")
@@ -207,19 +174,56 @@ class HandtuchViewer(QWidget):
         frame.setMaximumWidth(500)
         self.setLog(True)
         return frame
-    def displayChange(self, checked):
+    def dynamicDisplay(self, checked):
         if checked:
             self.timer.start(2000)
         else:
             self.timer.stop()
 
-    def setResolution(self, checked):
-        self.esp.setDevice(4, checked)
-    def setVerbose(self, checked):
-        self.esp.verbose = checked
+# ESP communication
+    # Update request from ESP.py. New data arrived
+    def updateDisplay(self):
+        self.needsUpdate = True
+        self.t0 = max(self.t0, self.esp.tMin)
+    def setResolution(self, checked): self.esp.setDevice(4, checked)
+    def setVerbose(self, checked): self.esp.verbose = checked
+    def setLog(self, checked): self.esp.logging(checked)
+    def setFan1(self, i): self.esp.setDevice(1, i)
+    def setFan2(self, i): self.esp.setDevice(2, i)
+    def setUVC(self, i): self.esp.setDevice(3, i)
+    def setPumpe(self, i): self.esp.setDevice(0, i)
+    def setStop(self): self.esp.setState(0)
+    def setHochfahren(self): self.esp.setState(1)
+    def setBetrieb(self):
+        self.reporter.talk('Handtuch maschine startet betrieb', 10)
+        self.esp.setState(2)
 
-    def setLog(self, checked):
-        self.esp.logging(checked)
+    # Search for the parameter with ID
+    def paramWithID(self, ID):
+        for para in self.esp.parameter:
+            if para.cmd == ID: return para
+        raise(f'No parameter with ID <{ID}>')
+
+    # Callback if a slider is released. Parameter are only set on relaese of the mouse
+    def setParameterReleased(self):
+        self.setParameter()
+        self.esp.saveParameter()
+
+    # Callback for all sliders
+    def setParameter(self):
+        slider = self.sender()
+        for para in self.esp.parameter:
+            if para.slider == slider:
+                para.currentValue = para.min + para.step * float(slider.value())
+                para.label.setText(para.str())
+
+    def updateSlider(self, para):
+        m = int((para.max - para.min) / para.step)
+        para.slider.setRange(0, m)
+        value = round((para.currentValue - para.min) / para.step)
+        value = min(max(0, value), m)
+        para.slider.setValue(value)
+
     def setSprache(self, checked):
         if checked:
             self.reporter.setVerbosity(5)
@@ -249,9 +253,7 @@ class HandtuchViewer(QWidget):
         self.updateSlider(para)
         self.needsUpdate = False
         self.redraw()
-    def updateDisplay(self):
-        self.needsUpdate = True
-        self.t0 = max(self.t0, self.esp.tMin)
+
 
     def redraw(self):
         if not self.windowReady: return
