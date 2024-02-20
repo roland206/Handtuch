@@ -167,10 +167,11 @@ class HandtuchViewer(QWidget):
         btn.clicked.connect(self.esp.reset)
         layout.addRow(btn)
 
-        self.newButton(layout, "ESP Protokoll ausgeben", True, self.setVerbose)
+        self.newButton(layout, "ESP Protokoll ausgeben", False, self.setVerbose)
         self.newButton(layout, "Hohe Auflösung", self.esp.getDevice(4), self.setResolution)
         self.newButton(layout, "Sprachnachrichten", True, self.setSprache)
         self.newButton(layout, "Log-Datei erzeugen", True, self.setLog)
+        self.newButton(layout, "Log-Daten anzeigern", True, self.showLog)
         frame.setMaximumWidth(500)
         self.setLog(True)
         return frame
@@ -188,6 +189,14 @@ class HandtuchViewer(QWidget):
     def setResolution(self, checked): self.esp.setDevice(4, checked)
     def setVerbose(self, checked): self.esp.verbose = checked
     def setLog(self, checked): self.esp.logging(checked)
+    def showLog(self, checked): self.reporter.setVerbosity(print = checked)
+    def setSprache(self, checked):
+        if checked:
+            self.reporter.setVerbosity(talk=5)
+            self.reporter.talk('Sprachnachrichten aktiv', 20)
+        else:
+            self.reporter.talk('Werde nun den sappel halten', 20)
+            self.reporter.setVerbosity(talk=15)
     def setFan1(self, i): self.esp.setDevice(1, i)
     def setFan2(self, i): self.esp.setDevice(2, i)
     def setUVC(self, i): self.esp.setDevice(3, i)
@@ -224,13 +233,7 @@ class HandtuchViewer(QWidget):
         value = min(max(0, value), m)
         para.slider.setValue(value)
 
-    def setSprache(self, checked):
-        if checked:
-            self.reporter.setVerbosity(5)
-            self.reporter.talk('Sprachnachrichten aktiv', 20)
-        else:
-            self.reporter.talk('Werde nun den sappel halten', 20)
-            self.reporter.setVerbosity(15)
+
 
     def timerExpired(self):
         masks = [4, 8, 16, 2, 0x20, 0x40]
@@ -239,11 +242,12 @@ class HandtuchViewer(QWidget):
         elif not self.needsUpdate: return
         event = self.esp.events['S']
         status = event.lastValue
+        if     (status & 0x200) and not (self.lastStatus & 0x200) : self.reporter.talk('ups wasserüberlauf', 10)
         if not (status & 0x20) and (self.lastStatus & 0x20) : self.reporter.talk('Hochfahren beendet', 10)
         if not (status & 0x40) and (self.lastStatus & 0x40) : self.reporter.talk('Betrieb eingestellt', 10)
         if not (status & 0x80) and (self.lastStatus & 0x80) : self.reporter.talk('Bewässerung beendet', 10)
         if     (status & 0x80) and not (self.lastStatus & 0x80) : self.reporter.talk('handtücher werden bewässert', 10)
-        if     (status & 0x200) and not (self.lastStatus & 0x200) : self.reporter.talk('ups wasserüberlauf', 10)
+
         self.lastStatus = status
         for iLed,led in enumerate(self.leds):
             led.setLedState((status & masks[iLed]) > 0)

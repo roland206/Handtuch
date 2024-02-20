@@ -91,7 +91,7 @@ class ESP():
     def __init__(self, parameterFile, reporter, port = None, baud = 115200):
         self.reporter = reporter
         self.log = False
-        self.verbose = True
+        self.verbose = False
         self.parameterFile = parameterFile
         self.semaphore = Semaphore(1)
         self.tMin = 4007496193
@@ -141,6 +141,18 @@ class ESP():
         self.control = int(self.modePara.currentValue)
         self.deviceNames = ['Pumpe', 'Fan 1', 'Fan 2', 'UVC']
         self.deviceStates = ['aus', 'an', 'auto', 'party']
+
+        self.loadEventsFormFile(self.reporter.getCacheFilename())
+
+    def loadEventsFormFile(self, file):
+        print(f'Lade log-file <{file}>')
+        try:
+            with open(file) as f:
+                lines = f.readlines()
+                for line in lines:
+                    self.analyze(line)
+        except OSError:
+            print("File not found <" + file + ">")
     def connectWidget(self, widget):
         self.widget = widget
     def logging(self, flag):
