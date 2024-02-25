@@ -7,7 +7,7 @@ import numpy as np
 class NoPort(Exception):
     def __init__(self, ports):
         self.ports = ports
-        print('Expection created', ports)
+
 class Parameter():
     def __init__(self, name, cmd, min, max, scaling = 1, formating = '{0:.0f}', hidden = False, step = 1, type = int):
 
@@ -91,7 +91,7 @@ class EventList():
 
 
 class ESP():
-    def __init__(self, parameterFile, reporter, port = None, baud = 115200):
+    def __init__(self, parameterFile, reporter, port = None, baud = 115200, useHW = True):
         self.reporter = reporter
         self.log = False
         self.verbose = False
@@ -100,12 +100,16 @@ class ESP():
         self.tMin = 4007496193
         self.tMax = 0
         self.widget = None
-        if port is None:
-            ports = serial.tools.list_ports.comports()
-            for p, desc, hwid in sorted(ports):
-                if 'CP210' in desc: port = p
-            if port is None: raise NoPort(ports)
-        self.port = serial.Serial(port, baud)
+        self.useHW = useHW
+        if useHW:
+            if port is None:
+                ports = serial.tools.list_ports.comports()
+                for p, desc, hwid in sorted(ports):
+                    if 'CP210' in desc: port = p
+                if port is None: raise NoPort(ports)
+            self.port = serial.Serial(port, baud)
+        else:
+            self.port = None
         self.parameter = []
         self.parameter.append(Parameter('Wasser marsch Gewicht', 'g', -1.0, 8.0, 1e3,'{0:5.3f} kg', step = 0.1))
         self.parameter.append(Parameter('Max Rampen Gewicht', 'A', -1.0, 8.0, 1e3,'{0:5.3f} kg', step = 0.1))
@@ -137,17 +141,18 @@ class ESP():
         self.events['G'] = EventList('G', 'Gewicht', type = float, scale = 1e-3)
         self.events['Z'] = EventList('Z', 'Wasser Marsch', type = float, scale = 1e-3)
 
-        self.readerRun = True
-        self.reader = Thread(target = self.readerProcess)
-        self.reader.start()
-        self.sendCMD(f'T:{int(time())}') # set the ESP time
+        if useHW:
+            self.readerRun = True
+            self.reader = Thread(target = self.readerProcess)
+            self.reader.start()
+            self.sendCMD(f'T:{int(time())}') # set the ESP time
         self.control = int(self.modePara.currentValue)
         self.deviceNames = ['Pumpe', 'Fan 1', 'Fan 2', 'UVC']
         self.deviceStates = ['aus', 'an', 'auto', 'party']
 
-        self.loadEventsFormFile(self.reporter.getCacheFilename())
+        if useHW: self.loadEventsFromFile(self.reporter.getCacheFilename())
 
-    def loadEventsFormFile(self, file):
+    def loadEventsFromFile(self, file):
         print(f'Lade log-file <{file}>')
         try:
             with open(file) as f:
@@ -162,7 +167,7 @@ class ESP():
         self.log = flag
         if flag: self.sendCMD('F:')
     def saveParameter(self, toESP=True, toFile=True):
-        if toESP:
+        if toESP and self.useHW:
             msg = ''
             for para in self.parameter:
                 if msg != '' : msg += ':'
@@ -254,7 +259,8 @@ class ESP():
     def sendCMD(self, msg):
         if self.verbose: print(f'send <{msg}> to ESP')
         msg = msg + '\n'
-        self.port.write(bytes(msg.encode()))
+        if self.useHW:
+            self.port.write(bytes(msg.encode()))
     def stop(self):
         self.readerRun = False
         self.sendCMD('F:')

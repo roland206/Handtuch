@@ -7,7 +7,7 @@ from Leds import *
 from Reporter import *
 
 class HandtuchViewer(QWidget):
-    def __init__(self, esp, reporter, parent=None,):
+    def __init__(self, esp, reporter, simulation = False, parent=None,):
         QWidget.__init__(self, parent)
         self.reporter = reporter
         self.lastStatus = 0
@@ -20,16 +20,16 @@ class HandtuchViewer(QWidget):
         self.timer=QTimer()
         self.timer.timeout.connect(self.timerExpired)
         layout = QHBoxLayout()
-        layout.addWidget(self.cmdFrame())
+        cmd = self.cmdFrame()
+        cmd.setHidden(simulation)
+        layout.addWidget(cmd)
         self.plot = Plot()
         layout.addWidget(self.plot)
         self.setLayout(layout)
         self.redraw()
         self.windowReady = True
         esp.connectWidget(self)
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.timerExpired)
-        self.timer.start(2000)
+        if not simulation: self.timer.start(2000)
         self.reporter.talk('Handtuch maschine gestarted', 10)
 
 
@@ -174,6 +174,7 @@ class HandtuchViewer(QWidget):
         self.newButton(layout, "Log-Daten anzeigern", True, self.showLog)
         frame.setMaximumWidth(500)
         self.setLog(True)
+        layout.setEnabled(False)
         return frame
     def dynamicDisplay(self, checked):
         if checked:
