@@ -21,7 +21,7 @@ class HandtuchViewer(QWidget):
         self.timer.timeout.connect(self.timerExpired)
         layout = QHBoxLayout()
         cmd = self.cmdFrame()
-        cmd.setHidden(simulation)
+   #     cmd.setHidden(simulation)
         layout.addWidget(cmd)
         self.plot = Plot()
         layout.addWidget(self.plot)
@@ -174,7 +174,6 @@ class HandtuchViewer(QWidget):
         self.newButton(layout, "Log-Daten anzeigern", True, self.showLog)
         frame.setMaximumWidth(500)
         self.setLog(True)
-        layout.setEnabled(False)
         return frame
     def dynamicDisplay(self, checked):
         if checked:

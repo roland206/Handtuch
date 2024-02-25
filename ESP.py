@@ -99,6 +99,7 @@ class ESP():
         self.semaphore = Semaphore(1)
         self.tMin = 4007496193
         self.tMax = 0
+        self.ladeVorgang = False
         self.widget = None
         self.useHW = useHW
         if useHW:
@@ -251,6 +252,11 @@ class ESP():
             for i in range(2, len(input), 2):
                 ev = self.events[input[i]]
                 ev.addEvent(when, int(input[i+1]))
+                if input[i] == 'S':
+                    load = (ev.lastValue & 128) != 0
+                    if load != self.ladeVorgang:
+                        self.ladeVorgang = load
+                        print(f'{when} {load}')
         else:
             print(f'Kommentar {cmd}')
         if self.log: self.reporter.logEvent(cmd)
