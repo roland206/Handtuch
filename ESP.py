@@ -38,6 +38,8 @@ class EventList():
         self.time = np.zeros([self.space ]).astype(int)
         self.data = np.zeros([self.space ]).astype(type)
         self.nData = 0
+
+
         self.lastValue = 0
         EventList.listofAll.append(self)
 
@@ -45,10 +47,9 @@ class EventList():
         last = self.nData- 1
         if (last < 0) or (t1 < self.time[0]) or (t0 >= self.time[last]): return None, None
         i0, i1 = 0, last
-        if t0 < self.time[0]: i0 = np.argmax(self.time >= t0)
+        if t0 > self.time[0]: i0 = np.argmax(self.time > t0)
         if t1 < self.time[last]: i1 = np.argmax(self.time >= t1)
 
-        if i0 > 0: i0 -= 1
         i1 = min(i1+2, last) + 1
         return self.time[i0:i1], self.data[i0:i1]
     def addEvent(self, when, data):
@@ -58,6 +59,7 @@ class EventList():
             self.reduceSpace()
 
         if self.nData > 0:
+            if when < self.time[self.nData -1]: print(f'Zeiten nicht konsekutiv')
             if data == self.data[self.nData - 1]: return
 
         if self.type is float : data = self.scale * float(data)
@@ -65,6 +67,7 @@ class EventList():
         self.time[self.nData] = when
         self.data[self.nData] = data
         self.nData += 1
+
         self.lastValue = data
 
     def reduceSpace(self):

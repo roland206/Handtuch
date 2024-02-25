@@ -288,7 +288,7 @@ class HandtuchViewer(QWidget):
                 sp = plot.addSubPlot(2, f"Temperatur {event.lastValue:4.1f}°")
                 sp.timeAxis = True
                 sp.ylim = [np.min(data)-1.5, np.max(data)+1.5]
-                sp.plot(t, data, colorIndex = 3)
+                sp.plot(t, data, colorIndex = 3, yFormat = '{0:4.1f}')
 
             event = self.esp.events['H']
             t, data = event.extractData(self.t0, self.t1)
@@ -296,7 +296,7 @@ class HandtuchViewer(QWidget):
                 sp = plot.addSubPlot(2, f"Luftfeuchte {event.lastValue:4.1f}%")
                 sp.timeAxis = True
                 sp.ylim = [np.min(data)-1.5, np.max(data)+1.5]
-                sp.plot(t, data, colorIndex = 3)
+                sp.plot(t, data, colorIndex = 3, yFormat = '{0:4.1f}')
         if True:
             event = self.esp.events['G']
             t, data = event.extractData(self.t0, self.t1)
@@ -305,12 +305,12 @@ class HandtuchViewer(QWidget):
                 tSoll, dataSoll = evSoll.extractData(self.t0, self.t1)
                 sp = plot.addSubPlot(2, f"Gewicht {event.lastValue:.2f}kg Soll = {evSoll.lastValue:.2f}kg")
                 sp.timeAxis = True
-                sp.plot(t, data, colorIndex = 3)
+                sp.plot(t, data, colorIndex = 3, yFormat = '{0:6.3f}')
                 if tSoll is not None:
                     sp.setBlockMode()
                     tSoll= np.concatenate((tSoll, np.array([self.t1])))
                     dataSoll = np.concatenate((dataSoll, np.array([dataSoll[-1]])))
-                    sp.plot(tSoll, dataSoll, colorIndex = 2)
+                    sp.plot(tSoll, dataSoll, colorIndex = 2, yFormat = '{0:6.3f}')
 
 
         plot.setXlim([self.t0, self.t1+1])

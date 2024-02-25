@@ -3,7 +3,13 @@ from PyQt5.QtGui import QPainter, QPen, QColor, QFont, QBrush
 from PyQt5.QtCore import Qt, QRectF
 import numpy as np
 from time import *
-
+from math import frexp, ldexp
+def roundbits(fval):
+    """Return the floating-point value `fval` rounded to `nbits` bits
+    in the significand."""
+    significand, exponent = frexp(fval)
+    newsignificand = round(significand * 10000) / 10000
+    return ldexp(newsignificand, exponent)
 class SubPlot():
     def __init__(self, relHeight, widget):
 
@@ -81,6 +87,7 @@ class SubPlot():
         self.timeAxis = False
         self.symbol = None
         self.actBlockMode = False
+        self.yFormat = None
 
     def setBlockMode(self, mode = True):
         self.actBlockMode = mode
@@ -94,12 +101,12 @@ class SubPlot():
         p.drawText(round(self.px + self.pWidth/2 - 0.5 * fm.width(self.titleStr)), round(self.py -0.2 *  fm.height()), self.titleStr)
 
 
-    def plot(self, x, y, label = None, bitmasks = None, colorIndex = -1):
+    def plot(self, x, y, label = None, bitmasks = None, colorIndex = -1, yFormat = None):
         if len(x) < 1: return
         if len(x) != len(y):
             print("X and y must have same length")
             return
-
+        self.yFormat = yFormat
         if self.bitmasks != None: return
         if bitmasks != None:
             self.xdata = [x]
@@ -126,7 +133,7 @@ class SubPlot():
         spacing = np.power(10.0, round(np.log10(delta)))
         if int(delta / spacing) < 3: spacing = spacing / 2
         if int(delta / spacing) < 3: spacing = spacing / 2
-        tick = int(limits[0] / spacing) * spacing
+        tick = spacing * int(limits[0] / spacing)
         grid = []
         while (tick <= limits[1]):
             if tick >= limits[0]: grid.append(tick)
@@ -375,7 +382,10 @@ class SubPlot():
                 if self.yAxisFlag:
                     p.setPen(QColor(self.fc))
                     p.drawLine(round(x1), round(py) , round(x2), round(py))
-                    text = str(y)
+                    if self.yFormat is None:
+                        text = str(roundbits(y))
+                    else:
+                        text = self.yFormat.format(y)
                     px = x1 - fm.width(text + 'A')
                     p.setPen(QColor(self.fc))
                     p.drawText(round(px), round(py + 0.4 * cch), text)

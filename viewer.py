@@ -1,29 +1,28 @@
+import os
+
 from PyQt5 import QtWidgets, uic
 from datetime import datetime
 from PyQt5.QtWidgets import QApplication, QWidget, QDialog, QCheckBox, QFormLayout, QTabWidget
 #import pyqtgraph as pg
 import sys
 import numpy as np
+import pathlib
 import platform
 from ESP import *
 from HandtuchViewer import *
 
-
-class MainWindow(QTabWidget):
-    def __init__(self, esp, reporter):
-        super(MainWindow, self).__init__()
-        self.addTab(HandtuchViewer(esp, reporter)   , "Verlauf")
-        self.resize(2400, 1800)
- #       self.addTab(HandtuchParameter(esp), "Parameter")
-
 def main(esp, reporter):
     app = QApplication(sys.argv)
-    main = MainWindow(esp, reporter)
+    main = HandtuchViewer(esp, reporter)
+    main.resize(2400, 1800)
     main.show()
     app.exec_()
     esp.connectWidget(None)
 
 if __name__ == '__main__':
+
+    os.chdir(pathlib.Path(__file__).parent.resolve())
+
     if 'indows' in platform.platform():
         reporter = Reporter(Linux = False)
     else:
