@@ -3,7 +3,7 @@ import serial.tools.list_ports
 from time import time, sleep
 from threading import *
 import numpy as np
-
+from Events import *
 class NoPort(Exception):
     def __init__(self, ports):
         self.ports = ports
@@ -27,67 +27,6 @@ class Parameter():
         value = self.formating.format(self.currentValue)
         return f'{self.name} {value}'
 
-class EventList():
-    listofAll = []
-    def __init__(self,ID, name, type = int, scale = 1.0):
-        self.ID = ID
-        self.name = name
-        self.type = type
-        self.scale = scale
-        self.space = 100000
-        self.time = np.zeros([self.space ]).astype(int)
-        self.data = np.zeros([self.space ]).astype(type)
-        self.nData = 0
-
-
-        self.lastValue = 0
-        EventList.listofAll.append(self)
-
-    def extractData(self, t0, t1):
-        last = self.nData- 1
-        if (last < 0) or (t1 < self.time[0]) or (t0 >= self.time[last]): return None, None
-        i0, i1 = 0, last
-        if t0 > self.time[0]: i0 = np.argmax(self.time > t0)
-        if t1 < self.time[last]: i1 = np.argmax(self.time >= t1)
-
-        i1 = min(i1+2, last) + 1
-        return self.time[i0:i1], self.data[i0:i1]
-    def addEvent(self, when, data):
-
-        if (self.nData + 3) >= self.space:
-            print(f'adapt storage for {self.name}')
-            self.reduceSpace()
-
-        if self.nData > 0:
-            if when < self.time[self.nData -1]: print(f'Zeiten nicht konsekutiv')
-            if data == self.data[self.nData - 1]: return
-
-        if self.type is float : data = self.scale * float(data)
-        if data == self.data[self.nData-1]: return
-        self.time[self.nData] = when
-        self.data[self.nData] = data
-        self.nData += 1
-
-        self.lastValue = data
-
-    def reduceSpace(self):
-        minTime = 0
-        for ev in EventList.listofAll:
-            index = int(ev.nData - ev.space / 2)
-            if index > 0: minTime = max(minTime, ev.time[index])
-
-        for ev in EventList.listofAll:
-            kill = 0
-            for i in range(ev.nData):
-                if ev.time[i] < minTime: kill = i
-            if kill <= 0:
-                print(f'No cut for {ev.name} ndata {ev.nData}')
-            else:
-                print(f'{ev.name} reduction kill point {kill} data in buffer {ev.nData}')
-                ev.time[0:ev.nData - kill] = ev.time[kill:ev.nData]
-                ev.data[0:ev.nData - kill] = ev.data[kill:ev.nData]
-                ev.nData -= kill
-        self.tMin = minTime
 
 
 class ESP():
@@ -135,12 +74,7 @@ class ESP():
         self.parameter.append(Parameter('b', 'b', 0, 0, hidden = True, type = float))
         self.parameter.append(Parameter('d', 'd', 0, 0, hidden = True, type = float))
         self.loadParameter(self.parameterFile)
-        self.events = {}
-        self.events['S'] = EventList('S', 'Status')
-        self.events['T'] = EventList('T', 'Temperatur', type = float, scale = 1e-3)
-        self.events['H'] = EventList('H', 'Luftfeuchte', type = float, scale = 1e-3)
-        self.events['G'] = EventList('G', 'Gewicht', type = float, scale = 1e-3)
-        self.events['Z'] = EventList('Z', 'Wasser Marsch', type = float, scale = 1e-3)
+        self.events = createEvents()
 
         if useHW:
             self.readerRun = True
@@ -252,11 +186,6 @@ class ESP():
             for i in range(2, len(input), 2):
                 ev = self.events[input[i]]
                 ev.addEvent(when, int(input[i+1]))
-                if input[i] == 'S':
-                    load = (ev.lastValue & 128) != 0
-                    if load != self.ladeVorgang:
-                        self.ladeVorgang = load
-                        print(f'{when} {load}')
         else:
             print(f'Kommentar {cmd}')
         if self.log: self.reporter.logEvent(cmd)

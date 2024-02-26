@@ -12,17 +12,19 @@ from ESP import *
 from HandtuchViewer import *
 
 def main(esp, reporter, simulation = False):
+    if simulation:
+        esp.log = False
+        esp.loadEventsFromFile('C:/Roland/Python/Handtuch/Handtuch_24-02-24.log')
+    #    fnames = QFileDialog.getOpenFileNames(main, 'Simulation File(s)', reporter._path, 'Log-files (*.log);;All Files (*)')
+    #    print(str(fnames))
+    #    for name in fnames[0]:
+    #        esp.loadEventsFromFile(name)
     app = QApplication(sys.argv)
     main = HandtuchViewer(esp, reporter, simulation)
     main.resize(2400, 1800)
     main.show()
 
-    if simulation:
-        esp.log = False
-        fnames = QFileDialog.getOpenFileNames(main, 'Simulation File(s)', reporter._path, 'Log-files (*.log);;All Files (*)')
-        print(str(fnames))
-        for name in fnames[0]:
-            esp.loadEventsFromFile(name)
+
     app.exec_()
     esp.connectWidget(None)
 
@@ -35,9 +37,9 @@ if __name__ == '__main__':
     else:
         reporter = Reporter('/media/ramdisk/', Linux = True)
 
-
+    useHW = True
     try:
-        esp = ESP('Handtuch.para', reporter, useHW=True)
+        esp = ESP('Handtuch.para', reporter, useHW=useHW)
     except NoPort as inst:
         app = QtWidgets.QApplication([])
         msg = QMessageBox()
@@ -68,6 +70,6 @@ if __name__ == '__main__':
 
     if wish == 1: sys.exit()
     if wish == 0: esp = ESP('Handtuch.para', reporter, useHW=False)
-    main(esp, reporter, wish == 0)
+    main(esp, reporter, simulation = not(useHW))
     esp.stop()
 

@@ -1,22 +1,30 @@
 from time import time
+import scipy
 from PyQt5.QtCore import QTimer, QTime
 from PyQt5.QtWidgets import QCheckBox, QFormLayout, QHBoxLayout, QFrame, QPushButton, QMenu, QGroupBox, QGridLayout, \
     QLabel, QRadioButton, QComboBox
 from Plot import *
 from Leds import *
 from Reporter import *
+from Events import *
 
 class HandtuchViewer(QWidget):
     def __init__(self, esp, reporter, simulation = False, parent=None,):
         QWidget.__init__(self, parent)
         self.reporter = reporter
+        self.simulation = simulation
         self.lastStatus = 0
         self.TimerIDs = ['r', 's', 't', 'u']
         self.needsUpdate = False
         self.windowReady = False
         self.esp = esp
-        self.t1 = time()
-        self.t0 = self.t1 -60*60*1
+        if simulation:
+            event = self.esp.events['G']
+            self.t0 = event.time[0]
+            self.t1 = event.time[event.nData-1]
+        else:
+            self.t1 = time()
+            self.t0 = self.t1 -60*60*1
         self.timer=QTimer()
         self.timer.timeout.connect(self.timerExpired)
         layout = QHBoxLayout()
@@ -42,8 +50,9 @@ class HandtuchViewer(QWidget):
         newPos = event.localPos().x()
         xMove = -(newPos - self.lastPos) / self.plot.plotWidth
         tMove = xMove * (self.t1 - self.t0)
-        if (self.t0 + tMove) < self.esp.tMin : tMove = self.esp.tMin - self.t0
-        if (self.t1 + tMove) > self.esp.tMax : tMove = self.esp.tMax - self.t1
+        t0, t1 = timeSpan(self.esp.events)
+        if (self.t0 + tMove) < t0 : tMove = t0 - self.t0
+        if (self.t1 + tMove) > t1 : tMove = t1 - self.t1
         self.t0 = self.t0 + tMove
         self.t1 = min(self.t1 + tMove, time())
         self.lastPos = newPos
@@ -54,7 +63,7 @@ class HandtuchViewer(QWidget):
             scale = 0.8
         else:
             scale = 1.2
-        center = 0.5 * (self.t1 + self.t0)
+        center = self.t0 + (self.t1 - self.t0) / 2
         span = scale * (self.t1 - self.t0)
         self.t0 = center - span/2
         self.t1 = min(center + span/2, time())
@@ -91,8 +100,9 @@ class HandtuchViewer(QWidget):
         layout = QFormLayout()
         frame.setLayout(layout)
 
-        self.dynamikBtn     = self.newButton(layout, "Dynamische Anzeige", True, self.dynamicDisplay)
-        self.followBtn     = self.newButton(layout, "Zeitbereich nachführen", True)
+        self.dynamikBtn   = self.newButton(layout, "Dynamische Anzeige",  not self.simulation, self.dynamicDisplay)
+        self.followBtn    = self.newButton(layout, "Zeitbereich nachführen", not self.simulation)
+        self.dunstBtn     = self.newButton(layout, "Verdunstung berechnen", self.simulation)
 
         grid = QGroupBox("Geräte")
         gridLayout = QGridLayout()
@@ -185,7 +195,8 @@ class HandtuchViewer(QWidget):
     # Update request from ESP.py. New data arrived
     def updateDisplay(self):
         self.needsUpdate = True
-        self.t0 = max(self.t0, self.esp.tMin)
+        t0, t1 = timeSpan(self.esp.events)
+        self.t0 = max(self.t0, t0)
     def setResolution(self, checked): self.esp.setDevice(4, checked)
     def setVerbose(self, checked): self.esp.verbose = checked
     def setLog(self, checked): self.esp.logging(checked)
@@ -260,12 +271,17 @@ class HandtuchViewer(QWidget):
 
 
     def redraw(self):
-        if not self.windowReady: return
+        print(f'Redraw {self.t0} {self.t1} span = {self.t1-self.t0}')
+    #    if not self.windowReady:
+    #        print('nothin to redraw')
+    #        return
         self.esp.gainAccess(1)
         plot = self.plot
         plot.clr()
         plot.share = True
-        if self.followBtn.isChecked(): self.t1 = max(self.t1, self.esp.tMax)
+        if self.followBtn.isChecked():
+            t0, t1 = timeSpan(self.esp.events)
+            self.t1 = max(self.t1, t1)
 
         if True:
             event = self.esp.events['S']
@@ -312,8 +328,45 @@ class HandtuchViewer(QWidget):
                     dataSoll = np.concatenate((dataSoll, np.array([dataSoll[-1]])))
                     sp.plot(tSoll, dataSoll, colorIndex = 2, yFormat = '{0:6.3f}')
 
+        if self.dunstBtn.isChecked():
+            t,d, ts, ds = self.verdunstung(self.esp.events['G'], self.esp.events['S'], 128)
+            if t is not None:
+                sp = plot.addSubPlot(2, f"Verdunstung Liter/Tag")
+                sp.timeAxis = True
+                sp.plot(t, d, colorIndex=2, yFormat='{0:6.3f}')
+                sp.plot(ts, ds, colorIndex=0)
 
         plot.setXlim([self.t0, self.t1+1])
         plot.repaint()
         self.esp.releaseAccess(1)
+        print('done')
+
+    def verdunstung(self, gewicht, status, mask):
+        tOut, dOut = None, None
+        laden = status.data[0: status.nData] & mask
+        fluss = laden[0]
+        i0 = 0
+        iGewicht = 0
+        i = 1
+        while i < status.nData:
+            while gewicht.time[iGewicht] < status.time[i]: iGewicht += 1
+            if not fluss and laden[i]:
+                if gewicht.time[iGewicht] > self.t0 and gewicht.time[i0] < self.t1:
+                    t = gewicht.time[i0: iGewicht]
+                    poly = np.polyfit(t, gewicht.data[i0:iGewicht], 2) * (-60 * 60 * 24)
+                    nPoints = int((t[-1] - t[0]) / 60)
+                    t = np.linspace(t[0], t[-1], nPoints, endpoint=True)
+                    d = np.polyval(np.polyder(poly), t)
+                    if tOut is None:
+                        tOut, dOut = t, d
+                    else:
+                        tOut = np.append(tOut, t)
+                        dOut = np.append(dOut, d)
+            elif fluss and not laden[i]: i0 = iGewicht
+            fluss = laden[i]
+            i += 1
+        tSmooth = np.linspace(tOut[0], tOut[-1], 100, endpoint=True)
+        dSmooth = np.interp(tSmooth, tOut, dOut)
+        dSmooth = scipy.ndimage.gaussian_filter1d(dSmooth, 20)
+        return tOut, dOut, tSmooth, dSmooth
 
