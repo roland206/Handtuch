@@ -132,7 +132,9 @@ class HandtuchAnalyzer(QWidget):
                 if gewicht.time[iGewicht] > self.t0 and gewicht.time[i0] < self.t1:
                     if iGewicht -i0 > 5:
                         t = gewicht.time[i0: iGewicht]
-                        poly = np.polynomial.polynomial.polyfit(t, gewicht.data[i0:iGewicht], 2) * (-60 * 60 * 24)
+                        d = gewicht.data[i0:iGewicht]
+                        poly = np.polyfit(t, d, 1) * (-60 * 60 * 24)
+                        #print(poly)
                         nPoints = int((t[-1] - t[0]) / 60)
                         t = np.linspace(t[0], t[-1], nPoints, endpoint=True)
                         d = np.polyval(np.polyder(poly), t)

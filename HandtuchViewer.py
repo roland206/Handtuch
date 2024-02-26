@@ -9,7 +9,7 @@ from Reporter import *
 from Events import *
 
 class HandtuchViewer(QWidget):
-    def __init__(self, esp, parent=None,):
+    def __init__(self, esp, parent=None):
         QWidget.__init__(self, parent)
         self.reporter = esp.reporter
         self.lastStatus = 0
@@ -343,15 +343,15 @@ class HandtuchViewer(QWidget):
             while gewicht.time[iGewicht] < status.time[i]: iGewicht += 1
             if not fluss and laden[i]:
                 if gewicht.time[iGewicht] > self.t0 and gewicht.time[i0] < self.t1:
-                    if iGewicht -i0 > 5:
+                    if iGewicht - i0 > 5:
                         t = gewicht.time[i0: iGewicht]
-                        poly = np.polynomial.polynomial.polyfit(t, gewicht.data[i0:iGewicht], 2) * (-60 * 60 * 24)
+                        poly = np.polyfit(t, gewicht.data[i0:iGewicht], 1) * (-60 * 60 * 24)
                         nPoints = int((t[-1] - t[0]) / 60)
                         t = np.linspace(t[0], t[-1], nPoints, endpoint=True)
                         d = np.polyval(np.polyder(poly), t)
                         if tOut is None:
                             tOut, dOut = t, d
-                        else:
+                        else: 
                             tOut = np.append(tOut, t)
                             dOut = np.append(dOut, d)
             elif fluss and not laden[i]: i0 = iGewicht

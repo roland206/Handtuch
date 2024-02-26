@@ -16,7 +16,7 @@ class MainWindow(QTabWidget):
     def __init__(self, esp, reporter, logPath):
         super(MainWindow, self).__init__()
         self.logPath = logPath
-        if esp is not None : self.addTab(HandtuchViewer(esp, False)   , "Aktuell")
+        if esp is not None : self.addTab(HandtuchViewer(esp), "Aktuell")
         self.analyzer = HandtuchAnalyzer(None)
         self.analyzer.loadLogFiles(logPath)
         self.addTab( self.analyzer , "Historie")
@@ -24,8 +24,6 @@ class MainWindow(QTabWidget):
         self.resize(1800, 1200)
 
     def chanced(self):
-
-        print(f"Sollte re-read {self.currentIndex()}")
         widget = self.currentWidget()
         if (type(widget) == HandtuchAnalyzer):  self.analyzer.loadLogFiles(self.logPath)
 
