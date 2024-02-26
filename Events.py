@@ -8,6 +8,20 @@ def createEvents():
     events['Z'] = EventList('Z', 'Wasser Marsch', type=float, scale=1e-3)
     return events
 
+def loadEventFile(events, file):
+    print(f'Lade log-file <{file}>')
+    try:
+        with open(file) as f:
+            lines = f.readlines()
+            for line in lines:
+                input = line.split(':')
+                if input[0] == 'W':
+                    when = int(input[1])
+                    for i in range(2, len(input), 2):
+                        ev = events[input[i]]
+                        ev.addEvent(when, int(input[i + 1]))
+    except OSError:
+        print("File not found <" + file + ">")
 def timeSpan(events):
     tMin, tMax = 4000000000, 0
     for key in events:

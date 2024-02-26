@@ -9,27 +9,22 @@ from Reporter import *
 from Events import *
 
 class HandtuchViewer(QWidget):
-    def __init__(self, esp, reporter, simulation = False, parent=None,):
+    def __init__(self, esp, parent=None,):
         QWidget.__init__(self, parent)
-        self.reporter = reporter
-        self.simulation = simulation
+        self.reporter = esp.reporter
         self.lastStatus = 0
         self.TimerIDs = ['r', 's', 't', 'u']
         self.needsUpdate = False
         self.windowReady = False
         self.esp = esp
-        if simulation:
-            event = self.esp.events['G']
-            self.t0 = event.time[0]
-            self.t1 = event.time[event.nData-1]
-        else:
-            self.t1 = time()
-            self.t0 = self.t1 -60*60*1
+
+        self.t1 = time()
+        self.t0 = self.t1 -60*60*1
         self.timer=QTimer()
         self.timer.timeout.connect(self.timerExpired)
         layout = QHBoxLayout()
         cmd = self.cmdFrame()
-   #     cmd.setHidden(simulation)
+
         layout.addWidget(cmd)
         self.plot = Plot()
         layout.addWidget(self.plot)
@@ -37,7 +32,7 @@ class HandtuchViewer(QWidget):
         self.redraw()
         self.windowReady = True
         esp.connectWidget(self)
-        if not simulation: self.timer.start(2000)
+        self.timer.start(2000)
         self.reporter.talk('Handtuch maschine gestarted', 10)
 
 
@@ -100,9 +95,9 @@ class HandtuchViewer(QWidget):
         layout = QFormLayout()
         frame.setLayout(layout)
 
-        self.dynamikBtn   = self.newButton(layout, "Dynamische Anzeige",  not self.simulation, self.dynamicDisplay)
-        self.followBtn    = self.newButton(layout, "Zeitbereich nachführen", not self.simulation)
-        self.dunstBtn     = self.newButton(layout, "Verdunstung berechnen", self.simulation)
+        self.dynamikBtn   = self.newButton(layout, "Dynamische Anzeige",  True, self.dynamicDisplay)
+        self.followBtn    = self.newButton(layout, "Zeitbereich nachführen", True)
+        self.dunstBtn     = self.newButton(layout, "Verdunstung berechnen", True)
 
         grid = QGroupBox("Geräte")
         gridLayout = QGridLayout()

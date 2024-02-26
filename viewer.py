@@ -1,4 +1,4 @@
-import os
+import glob
 
 from PyQt5 import QtWidgets, uic
 from datetime import datetime
@@ -10,36 +10,45 @@ import pathlib
 import platform
 from ESP import *
 from HandtuchViewer import *
+from HandtuchAnalyzer import *
 
-def main(esp, reporter, simulation = False):
-    if simulation:
-        esp.log = False
-        esp.loadEventsFromFile('C:/Roland/Python/Handtuch/Handtuch_24-02-24.log')
-    #    fnames = QFileDialog.getOpenFileNames(main, 'Simulation File(s)', reporter._path, 'Log-files (*.log);;All Files (*)')
-    #    print(str(fnames))
-    #    for name in fnames[0]:
-    #        esp.loadEventsFromFile(name)
+class MainWindow(QTabWidget):
+    def __init__(self, esp, reporter, logPath):
+        super(MainWindow, self).__init__()
+        self.logPath = logPath
+        if esp is not None : self.addTab(HandtuchViewer(esp, False)   , "Aktuell")
+        self.analyzer = HandtuchAnalyzer(None)
+        self.analyzer.loadLogFiles(logPath)
+        self.addTab( self.analyzer , "Historie")
+        self.currentChanged.connect(self.chanced)
+        self.resize(1800, 1200)
+
+    def chanced(self):
+
+        print(f"Sollte re-read {self.currentIndex()}")
+        widget = self.currentWidget()
+        if (type(widget) == HandtuchAnalyzer):  self.analyzer.loadLogFiles(self.logPath)
+
+def main(esp, reporter , logPath):
     app = QApplication(sys.argv)
-    main = HandtuchViewer(esp, reporter, simulation)
-    main.resize(2400, 1800)
+    main = MainWindow(esp, reporter, logPath)
     main.show()
-
-
     app.exec_()
-    esp.connectWidget(None)
+
 
 if __name__ == '__main__':
 
     os.chdir(pathlib.Path(__file__).parent.resolve())
 
     if 'indows' in platform.platform():
-        reporter = Reporter('.', Linux = False)
+        logPath = '.\\'
+        reporter = Reporter(logPath, Linux = False)
     else:
-        reporter = Reporter('/media/ramdisk/', Linux = True)
+        logPath = '/media/ramdisk/'
+        reporter = Reporter(logPath, Linux = True)
 
-    useHW = True
     try:
-        esp = ESP('Handtuch.para', reporter, useHW=useHW)
+        esp = ESP('Handtuch.para', reporter)
     except NoPort as inst:
         app = QtWidgets.QApplication([])
         msg = QMessageBox()
@@ -50,10 +59,11 @@ if __name__ == '__main__':
         msg.setText(detail)
         msg.setWindowTitle("Error")
 
-        msg.addButton(QPushButton('Simulation'), QMessageBox.NoRole)
+        msg.addButton(QPushButton('Historie'), QMessageBox.NoRole)
         msg.addButton(QPushButton('Abbruch'), QMessageBox.RejectRole)
-        wish = msg.exec_()
-        useHW = wish != 0
+        if msg.exec_() == 1: sys.exit()
+        esp = None
+
     except serial.serialutil.SerialException as inst:
         app = QtWidgets.QApplication([])
         msg = QMessageBox()
@@ -61,15 +71,14 @@ if __name__ == '__main__':
         msg.setText("USB Error")
         msg.setInformativeText(str(inst))
         msg.setWindowTitle("Error")
-        msg.addButton(QPushButton('Simulation'), QMessageBox.NoRole)
+        msg.addButton(QPushButton('Historie'), QMessageBox.NoRole)
         msg.addButton(QPushButton('Abbruch'), QMessageBox.RejectRole)
-        wish = msg.exec_()
-        useHW = wish != 0
-    else:
-        wish = 2
+        if msg.exec_() == 1: sys.exit()
+        esp = None
 
-    if wish == 1: sys.exit()
-    if wish == 0: esp = ESP('Handtuch.para', reporter, useHW=False)
-    main(esp, reporter, simulation = not(useHW))
-    esp.stop()
+    main(esp, reporter, logPath)
+    if esp is not None:
+        esp.connectWidget(None)
+        esp.stop()
+
 
