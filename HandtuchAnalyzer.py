@@ -18,10 +18,12 @@ class HandtuchAnalyzer(QWidget):
         layout.addWidget(self.plot)
         self.setLayout(layout)
 
-    def loadLogFiles(self, path):
+    def loadLogFiles(self, path, maxFile):
         files = glob.glob(path + 'Handtuch_*.log')
         files.sort()
         self.events = createEvents()
+        if len(files) > maxFile:
+            files = files[-maxFile:]
         for file in files:
             loadEventFile(self.events, file)
         self.t0, self.t1 = timeSpan(self.events)
