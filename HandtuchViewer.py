@@ -271,10 +271,6 @@ class HandtuchViewer(QWidget):
 
 
     def redraw(self):
-        print(f'Redraw {self.t0} {self.t1} span = {self.t1-self.t0}')
-    #    if not self.windowReady:
-    #        print('nothin to redraw')
-    #        return
         self.esp.gainAccess(1)
         plot = self.plot
         plot.clr()
@@ -339,7 +335,7 @@ class HandtuchViewer(QWidget):
         plot.setXlim([self.t0, self.t1+1])
         plot.repaint()
         self.esp.releaseAccess(1)
-        print('done')
+
 
     def verdunstung(self, gewicht, status, mask):
         tOut, dOut = None, None
@@ -348,20 +344,21 @@ class HandtuchViewer(QWidget):
         i0 = 0
         iGewicht = 0
         i = 1
-        while i < status.nData:
+        while i < status.nData-1:
             while gewicht.time[iGewicht] < status.time[i]: iGewicht += 1
             if not fluss and laden[i]:
                 if gewicht.time[iGewicht] > self.t0 and gewicht.time[i0] < self.t1:
-                    t = gewicht.time[i0: iGewicht]
-                    poly = np.polyfit(t, gewicht.data[i0:iGewicht], 2) * (-60 * 60 * 24)
-                    nPoints = int((t[-1] - t[0]) / 60)
-                    t = np.linspace(t[0], t[-1], nPoints, endpoint=True)
-                    d = np.polyval(np.polyder(poly), t)
-                    if tOut is None:
-                        tOut, dOut = t, d
-                    else:
-                        tOut = np.append(tOut, t)
-                        dOut = np.append(dOut, d)
+                    if iGewicht -i0 > 5:
+                        t = gewicht.time[i0: iGewicht]
+                        poly = np.polynomial.polynomial.polyfit(t, gewicht.data[i0:iGewicht], 2) * (-60 * 60 * 24)
+                        nPoints = int((t[-1] - t[0]) / 60)
+                        t = np.linspace(t[0], t[-1], nPoints, endpoint=True)
+                        d = np.polyval(np.polyder(poly), t)
+                        if tOut is None:
+                            tOut, dOut = t, d
+                        else:
+                            tOut = np.append(tOut, t)
+                            dOut = np.append(dOut, d)
             elif fluss and not laden[i]: i0 = iGewicht
             fluss = laden[i]
             i += 1
