@@ -14,7 +14,7 @@ class MainWindow(QTabWidget):
         self.analyzer.loadLogFiles(logPath, 10)
         self.addTab(self.analyzer, "Historie")
         self.currentChanged.connect(self.chanced)
-        self.resize(1800, 1200)
+        self.resize(2400, 1800)
 
     def chanced(self):
         widget = self.currentWidget()
