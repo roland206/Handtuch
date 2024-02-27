@@ -333,7 +333,7 @@ class HandtuchViewer(QWidget):
 
 
     def verdunstung(self, gewicht, status, mask):
-        tOut, dOut = None, None
+        tOut, dOut, tSmooth, dSmooth  = None, None, None, None
         laden = status.data[0: status.nData] & mask
         fluss = laden[0]
         i0 = 0
@@ -357,8 +357,9 @@ class HandtuchViewer(QWidget):
             elif fluss and not laden[i]: i0 = iGewicht
             fluss = laden[i]
             i += 1
-        tSmooth = np.linspace(tOut[0], tOut[-1], 100, endpoint=True)
-        dSmooth = np.interp(tSmooth, tOut, dOut)
-        dSmooth = scipy.ndimage.gaussian_filter1d(dSmooth, 20)
+        if tOut is not None:
+            tSmooth = np.linspace(tOut[0], tOut[-1], 100, endpoint=True)
+            dSmooth = np.interp(tSmooth, tOut, dOut)
+            dSmooth = scipy.ndimage.gaussian_filter1d(dSmooth, 20)
         return tOut, dOut, tSmooth, dSmooth
 
