@@ -89,6 +89,8 @@ class SubPlot():
         self.actBlockMode = False
         self.xFormat = None
         self.yFormat = None
+        self.polyx = None
+        self.polyy = None
 
     def setBlockMode(self, mode = True): self.actBlockMode = mode
     def title(self, title): self.titleStr = title
@@ -169,12 +171,7 @@ class SubPlot():
         self.yTicks = self.genTicks(self.ylimit)
 
     def getPoints(self, x, y):
-        dx = self.xlimit[1]-self.xlimit[0]
-        dy = self.ylimit[1]-self.ylimit[0]
-        if (abs(dx) <= 1e-6) or (abs(dy) < 1e-6): return [self.px], [self.py]
-        x = self.px + (x - self.xlimit[0]) * (self.pWidth  / dx)
-        y = self.py + self.pHeight - (y - self.ylimit[0]) * (self.pHeight / dy)
-        return x,y
+        return np.polyval(self.polyx, x), np.polyval(self.polyy, y)
 
     def timeToXClipped(self, t):
         twindow = self.xlimit[1]-self.xlimit[0]
@@ -197,10 +194,10 @@ class SubPlot():
         self.y = y
         self.w = w
         self.h = h
-        self.px = x+100
-        self.py = y + 10 +  2*titleH
+        self.px = x + 100
+        self.py = y + 10 + 2 * titleH
         self.pWidth = w - lw - self.px
-        self.pHeight = h - 2.5*cch - 2*titleH
+        self.pHeight = h - 2.5 * cch - 2 * titleH
         if self.timeAxis and self.xAxisFlag: self.pHeight = self.pHeight - 2.5 * cch
         self.legendWidth = lw
         self.legendHeight = h
@@ -437,6 +434,8 @@ class SubPlot():
 
     def draw(self, p):
         if len(self.xdata) < 1 : return
+        self.polyx = np.polyfit(np.array([self.xlimit[0], self.xlimit[1]]), np.array([self.px, self.px + self.pWidth]), 1)
+        self.polyy = np.polyfit(np.array([self.ylimit[0], self.ylimit[1]]), np.array([self.py, self.py + self.pHeight]), 1)
         fm = self.widget.fontMetrics()
         cch2 = 0.5 * fm.height()
         p.setPen(QColor(self.fc))
