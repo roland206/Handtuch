@@ -43,6 +43,21 @@ class EventList():
         self.nData = 0
         self.lastValue = 0
 
+    def sampleData(self, time):
+        data = np.full([len(time)], np.nan)
+        if self.nData < 1: return data
+        iNext = 1
+        tNext = self.time[1]
+        dSrc = self.data[0]
+        for iDst, t in enumerate(time):
+            while t > tNext:
+                iNext += 1
+                if iNext >= self.nData: return data
+                tNext = self.time[iNext]
+                dSrc = self.data[iNext]
+            data[iDst] = dSrc
+        return data
+
     def extractData(self, t0, t1):
         last = self.nData - 1
         if (last < 0) or (t1 < self.time[0]) or (t0 >= self.time[last]): return None, None

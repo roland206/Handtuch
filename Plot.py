@@ -87,13 +87,13 @@ class SubPlot():
         self.timeAxis = False
         self.symbol = None
         self.actBlockMode = False
+        self.xFormat = None
         self.yFormat = None
 
-    def setBlockMode(self, mode = True):
-        self.actBlockMode = mode
-    def title(self, title):
-        self.titleStr = title
-
+    def setBlockMode(self, mode = True): self.actBlockMode = mode
+    def title(self, title): self.titleStr = title
+    def setXlim(self, xlim): self.xlim = xlim
+    def setYlim(self, ylim): self.ylim = ylim
     def drawTitle(self, p):
         if self.title == None: return
         p.setFont(self.titleFont)
@@ -101,11 +101,12 @@ class SubPlot():
         p.drawText(round(self.px + self.pWidth/2 - 0.5 * fm.width(self.titleStr)), round(self.py -0.2 *  fm.height()), self.titleStr)
 
 
-    def plot(self, x, y, label = None, bitmasks = None, colorIndex = -1, yFormat = None):
+    def plot(self, x, y, label = None, bitmasks = None, colorIndex = -1, xFormat = None, yFormat = None):
         if len(x) < 1: return
         if len(x) != len(y):
             print("X and y must have same length")
             return
+        self.xFormat = xFormat
         self.yFormat = yFormat
         if self.bitmasks != None: return
         if bitmasks != None:
@@ -170,9 +171,9 @@ class SubPlot():
     def getPoints(self, x, y):
         dx = self.xlimit[1]-self.xlimit[0]
         dy = self.ylimit[1]-self.ylimit[0]
-        if (dx == 0) or (dy == 0): return [self.px], [self.py]
-        x = self.px + (x - self.xlimit[0]) * self.pWidth  /(self.xlimit[1]-self.xlimit[0])
-        y = self.py + self.pHeight - (y - self.ylimit[0]) * self.pHeight /(self.ylimit[1]-self.ylimit[0])
+        if (abs(dx) <= 1e-6) or (abs(dy) < 1e-6): return [self.px], [self.py]
+        x = self.px + (x - self.xlimit[0]) * (self.pWidth  / dx)
+        y = self.py + self.pHeight - (y - self.ylimit[0]) * (self.pHeight / dy)
         return x,y
 
     def timeToXClipped(self, t):
@@ -366,7 +367,11 @@ class SubPlot():
                 if self.xAxisFlag:
                     p.setPen(QColor(self.fc))
                     p.drawLine(round(px), round(y1) , round(px), round(y2))
-                    text = str(x)
+                    if self.xFormat is None:
+                        text = str(roundbits(x))
+                    else:
+                        text = self.xFormat.format(x)
+                  #  text = str(x)
                     px = px - 0.5 * fm.width(text)
                     p.setPen(QColor(self.fc))
                     p.drawText(round(px), round(y3), text)
@@ -495,6 +500,10 @@ class Plot(QWidget):
     def setXlim(self, xlim):
         for sub in self.subPlots:
             sub.xlim = xlim
+
+    def setYlim(self, ylim):
+        for sub in self.subPlots:
+            sub.ylim = ylim
     def paintEvent(self, event):
         maxLen = 0
         for sub in self.subPlots:
