@@ -27,7 +27,7 @@ if __name__ == '__main__':
     if 'indows' in platform.platform():
         logPath, linux  = '.\\', False
     else:
-        logPath, linux = '/media/ramdisk/', True
+        logPath, linux = '/media/ramdisk/Handtuch/', True
     reporter = Reporter(logPath, Linux = linux)
     try:
         esp = ESP('Handtuch.para', reporter)

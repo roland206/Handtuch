@@ -33,7 +33,6 @@ class HandtuchViewer(QWidget):
         self.windowReady = True
         esp.connectWidget(self)
         self.timer.start(2000)
-        self.reporter.talk('Handtuch maschine gestarted', 10)
 
 
     def mousePressEvent(self, event) -> None:
@@ -174,7 +173,7 @@ class HandtuchViewer(QWidget):
 
         self.newButton(layout, "ESP Protokoll ausgeben", False, self.setVerbose)
         self.newButton(layout, "Hohe Auflösung", self.esp.getDevice(4), self.setResolution)
-        self.newButton(layout, "Sprachnachrichten", True, self.setSprache)
+        self.newButton(layout, "Sprachnachrichten", False, self.setSprache)
         self.newButton(layout, "Log-Datei erzeugen", True, self.setLog)
         self.newButton(layout, "Log-Daten anzeigern", True, self.showLog)
         frame.setMaximumWidth(500)

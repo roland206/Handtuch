@@ -435,7 +435,7 @@ class SubPlot():
     def draw(self, p):
         if len(self.xdata) < 1 : return
         self.polyx = np.polyfit(np.array([self.xlimit[0], self.xlimit[1]]), np.array([self.px, self.px + self.pWidth]), 1)
-        self.polyy = np.polyfit(np.array([self.ylimit[0], self.ylimit[1]]), np.array([self.py, self.py + self.pHeight]), 1)
+        self.polyy = np.polyfit(np.array([self.ylimit[0], self.ylimit[1]]), np.array([self.py+ self.pHeight, self.py]), 1)
         fm = self.widget.fontMetrics()
         cch2 = 0.5 * fm.height()
         p.setPen(QColor(self.fc))
