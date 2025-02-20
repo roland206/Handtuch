@@ -38,11 +38,9 @@ void cmdWater(int cmd) {
 
 void checkWasser() {
     static int nCyclesToDo;
-    static int flutHappened = 0;
+    int flutHappened = sys.state & STATUS_FLUT;
     int ramp = sys.state & STATUS_MODE_RAMP;
     int stopWater = (sys.weight - sys.histerese) > sys.wasserMarsch;
-
-    flutHappened |= sys.state & STATUS_FLUT;
     
     switch(waterState) {
       
